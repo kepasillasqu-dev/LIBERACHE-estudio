@@ -250,6 +250,8 @@ input[type=range]{width:100%;accent-color:var(--red)}
 .plan-svg .pl-wall.low{stroke-width:.08;stroke:#6C6964}
 .plan-svg .pl-win{stroke:var(--plan);stroke-width:.07}
 .plan-svg .pl-door{fill:none;stroke:var(--red);stroke-width:.03}
+.plan-svg .pl-furn{fill:#F6F4F0;stroke:#A9A49A;stroke-width:.025}
+.plan-svg .pl-furn.rug{fill:none;stroke-dasharray:.08 .06}
 .plan-svg .pl-step{stroke:#9A958C;stroke-width:.025}
 .plan-svg .pl-dim{stroke:#9A958C;stroke-width:.025}
 .plan-svg .pl-arrow{fill:none;stroke:var(--red);stroke-width:.08;stroke-linecap:round;stroke-linejoin:round}
@@ -718,9 +720,17 @@ var ACABADOS = {
 };
 
 /* ============================================================
-   MOTOR: programa arquitectónico → distribución → muros → cantidades
+   MOTOR: programa arquitectónico → distribución → muros → mobiliario → cantidades
+   Tipologías:
+   · Casa de 2-3 niveles: estancia al frente, núcleo (escalera en U contra la colindancia
+     + comedor/estar) al centro, servicios o recámaras al fondo. Recámaras en fila a lo
+     largo del estar, con suite (recámara principal + baño + vestidor).
+   · Casa de 1 nivel: zona social abierta al frente, pasillo, recámaras en fila.
+   · Negocio: área pública al frente con aparador; servicios en fila al fondo.
+     Con 2-3 niveles, acceso y escalera independientes desde la calle para los niveles altos.
    ============================================================ */
 var EPS = 1e-6;
+var TW = 0.075; // medio espesor de muro
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function sumArea(list) { return list.reduce(function (s, r) { return s + r.area; }, 0); }
 function room(key, name, area, group, furn, floor, extra) {
@@ -732,170 +742,311 @@ function room(key, name, area, group, furn, floor, extra) {
 function program(inp) {
   var N = inp.niveles, R = inp.recamaras, lv = [], k;
   if (inp.tipo === 'casa') {
-    var sala = room('sala', 'Sala', 20, 'social', 'sala', 'porc');
+    var sala = room('sala', 'Sala', 20, 'social', 'sala', 'porc', { entry: true });
     var comedor = room('comedor', 'Comedor', 13, 'social', 'comedor', 'porc');
     var cocina = room('cocina', 'Cocina', 11, 'social', 'cocina', 'tile');
     var lav = room('lav', 'Lavandería', 5, 'serv', 'lav', 'tile');
     var mb = room('mbano', 'Medio baño', 3, 'bath', 'mbano', 'tile');
     var rp = room('rp', 'Recámara principal', 16, 'priv', 'cama', 'wood');
     var bp = room('bp', 'Baño principal', 6, 'bath', 'bano', 'tile', { pref: 'rp' });
+    var vest = inp.acabado === 'premium' ? room('vest', 'Vestidor', 4, 'serv', 'vest', 'wood', { pref: 'rp' }) : null;
     var sec = [];
     for (var i = 2; i <= R; i++) sec.push(room('r' + i, 'Recámara ' + i, 11, 'priv', 'cama2', 'wood'));
     var bc = R >= 2 ? room('bc', 'Baño completo', 5, 'bath', 'bano', 'tile') : null;
     if (N === 1) {
-      lv.push({ front: [sala, comedor, cocina], back: [rp, bp].concat(sec, [bc, lav]).filter(Boolean) });
+      var back = [rp, bp, vest];
+      if (sec[0]) back.push(sec[0]);
+      if (bc) back.push(bc);
+      back.push(lav);
+      back = back.concat(sec.slice(1));
+      lv.push({ front: [sala, comedor, cocina], band: [room('hall0', 'Pasillo', 0, 'circ', 'hall', 'porc', { isHall: true })], back: back.filter(Boolean) });
     } else {
-      var g = { front: [sala], back: [comedor, cocina, mb, lav] };
-      if (R === 4) { var v = sec.pop(); v.name = 'Recámara de visitas'; g.front.push(v); }
-      lv.push(g);
-      var up = { front: sec.concat([bc]).filter(Boolean), back: [rp, bp] };
-      if (inp.acabado === 'premium') up.back.push(room('vest', 'Vestidor', 4, 'serv', 'vest', 'wood', { pref: 'rp' }));
-      if (R >= 3 || up.front.length === 0) up.front.push(room('estar', 'Estar familiar', 12, 'social', 'estar', 'wood'));
-      lv.push(up);
-      if (N === 3) {
-        lv.push({
-          front: [room('terraza', 'Terraza', 24, 'open', 'terraza', 'deck')],
-          back: [room('estudio', 'Estudio', 10, 'priv', 'escritorio', 'wood'),
-                 room('mb2', 'Medio baño', 3, 'bath', 'mbano', 'tile'),
-                 room('bod', 'Bodega', 5, 'serv', 'bodega', 'conc')]
-        });
-      }
+      var g0back = [mb, lav, cocina];
+      if (R === 4) { var v = sec.pop(); v.name = 'Recámara de visitas'; g0back.unshift(v); }
+      lv.push({ front: [sala], band: [comedor], back: g0back });
+      var upFront = sec.slice(0, 1).concat(bc ? [bc] : [], sec.slice(1));
+      if (!upFront.length) upFront = [room('estudio1', 'Estudio', 10, 'priv', 'escritorio', 'wood')];
+      lv.push({ front: upFront, band: [room('estar', 'Estar familiar', 0, 'social', 'estar', 'wood')], back: [rp, bp, vest].filter(Boolean) });
+      if (N === 3) lv.push({
+        front: [room('terraza', 'Terraza', 24, 'open', 'terraza', 'deck')],
+        band: [room('tv', 'Sala de TV', 0, 'social', 'estar', 'wood')],
+        back: [room('mb2', 'Medio baño', 3, 'bath', 'mbano', 'tile'), room('bod', 'Bodega', 5, 'serv', 'bodega', 'conc'), room('estudio', 'Estudio', 10, 'priv', 'escritorio', 'wood')]
+      });
     }
   } else {
     var gi = inp.giro;
     if (gi === 'local') {
-      lv.push({ front: [room('ventas', 'Área de ventas', 45, 'social', 'ventas', 'porc')],
-                back: [room('bod', 'Bodega', 12, 'serv', 'bodega', 'conc'),
-                       room('ofi', 'Oficina', 9, 'priv', 'escritorio', 'porc'),
-                       room('bn', 'Baño', 5, 'bath', 'mbano', 'tile')] });
-      for (k = 1; k < N; k++) lv.push({
-        front: [room('ofr' + k, 'Oficina en renta', 36, 'social', 'oficinas', 'porc')],
-        back: [room('bn' + k, 'Baño', 5, 'bath', 'mbano', 'tile'), room('arc' + k, 'Archivo', 6, 'serv', 'bodega', 'conc')] });
+      lv.push({ front: [room('ventas', 'Área de ventas', 45, 'social', 'ventas', 'porc', { entry: true, store: true })],
+                back: [room('ofi', 'Oficina', 9, 'priv', 'escritorio', 'porc'), room('bn', 'Baño', 5, 'bath', 'mbano', 'tile'), room('bod', 'Bodega', 12, 'serv', 'bodega', 'conc')] });
+      for (k = 1; k < N; k++) lv.push({ front: [room('ofr' + k, 'Oficina en renta', 36, 'social', 'oficinas', 'porc')],
+        back: [room('bn' + k, 'Baño', 5, 'bath', 'mbano', 'tile'), room('coc' + k, 'Cocineta', 7, 'serv', 'barra', 'tile')] });
     } else if (gi === 'consultorio') {
-      lv.push({ front: [room('rec', 'Recepción y espera', 20, 'social', 'recepcion', 'porc')],
-                back: [room('c1', 'Consultorio 1', 14, 'priv', 'consult', 'porc'),
-                       room('c2', 'Consultorio 2', 14, 'priv', 'consult', 'porc'),
-                       room('bn', 'Baño', 5, 'bath', 'mbano', 'tile')] });
-      for (k = 1; k < N; k++) lv.push({
-        front: [room('ca' + k, 'Consultorio ' + (k * 3 + 0), 14, 'priv', 'consult', 'porc'),
-                room('cb' + k, 'Consultorio ' + (k * 3 + 1), 14, 'priv', 'consult', 'porc')],
-        back: [room('cc' + k, 'Consultorio ' + (k * 3 + 2), 14, 'priv', 'consult', 'porc'),
-               room('bn' + k, 'Baño', 5, 'bath', 'mbano', 'tile')] });
+      lv.push({ front: [room('rec', 'Recepción y espera', 20, 'social', 'recepcion', 'porc', { entry: true })],
+                back: [room('c1', 'Consultorio 1', 14, 'priv', 'consult', 'porc'), room('bn', 'Baño', 5, 'bath', 'mbano', 'tile'), room('c2', 'Consultorio 2', 14, 'priv', 'consult', 'porc')] });
+      for (k = 1; k < N; k++) lv.push({ front: [room('esp' + k, 'Sala de espera', 14, 'social', 'recepcion', 'porc')],
+        back: [room('ca' + k, 'Consultorio ' + (k * 2 + 1), 14, 'priv', 'consult', 'porc'), room('bn' + k, 'Baño', 5, 'bath', 'mbano', 'tile'), room('cb' + k, 'Consultorio ' + (k * 2 + 2), 14, 'priv', 'consult', 'porc')] });
     } else {
-      lv.push({ front: [room('salon', 'Salón comedor', 50, 'social', 'mesas', 'porc')],
-                back: [room('coc', 'Cocina', 18, 'serv', 'cocinapro', 'tile'),
-                       room('bh', 'Baño hombres', 5, 'bath', 'mbano', 'tile'),
-                       room('bm', 'Baño mujeres', 5, 'bath', 'mbano', 'tile'),
-                       room('bod', 'Bodega', 6, 'serv', 'bodega', 'conc')] });
+      lv.push({ front: [room('salon', 'Salón comedor', 50, 'social', 'mesas', 'porc', { entry: true, store: true, bar: true })],
+                back: [room('bh', 'Baño hombres', 5, 'bath', 'mbano', 'tile'), room('bm', 'Baño mujeres', 5, 'bath', 'mbano', 'tile'), room('coc', 'Cocina', 18, 'serv', 'cocinapro', 'tile'), room('bod', 'Bodega', 6, 'serv', 'bodega', 'conc')] });
       for (k = 1; k < N; k++) {
-        if (k === N - 1) lv.push({
-          front: [room('ter' + k, 'Terraza comedor', 40, 'open', 'mesas', 'deck')],
-          back: [room('bn' + k, 'Baño', 5, 'bath', 'mbano', 'tile'), room('srv' + k, 'Barra de servicio', 8, 'serv', 'bodega', 'tile')] });
-        else lv.push({
-          front: [room('sal' + k, 'Salón privado', 40, 'social', 'mesas', 'porc')],
+        if (k === N - 1) lv.push({ front: [room('ter' + k, 'Terraza comedor', 40, 'open', 'mesas', 'deck')],
+          back: [room('bn' + k, 'Baño', 5, 'bath', 'mbano', 'tile'), room('srv' + k, 'Barra de servicio', 8, 'serv', 'barra', 'tile')] });
+        else lv.push({ front: [room('sal' + k, 'Salón privado', 40, 'social', 'mesas', 'porc')],
           back: [room('bn' + k, 'Baño', 5, 'bath', 'mbano', 'tile'), room('bd' + k, 'Bodega', 6, 'serv', 'bodega', 'conc')] });
       }
     }
   }
+  lv.forEach(function (l) { l.band = l.band || []; });
   return lv;
 }
 
-/* Bisección ordenada: reparte las piezas en un rectángulo respetando el orden */
-function bisect(list, r, out) {
+/* ---------- fila de piezas a lo largo de una circulación ---------- */
+function groupRow(list) {
+  var g = [], i = 0;
+  while (i < list.length) {
+    var r = list[i];
+    var last = g[g.length - 1];
+    if (r.pref && last && last.main && last.main.key === r.pref) { last.kids.push(r); i++; continue; }
+    var nx = list[i + 1];
+    if (!r.pref && r.area < 6.5 && nx && !nx.pref && nx.area < 6.5 && nx.group === 'serv' && (r.group === 'bath' || r.group === 'serv')) { g.push({ stack: [r, nx] }); i += 2; continue; }
+    g.push({ main: r, kids: [] }); i++;
+  }
+  g.forEach(function (x) { x.area = x.stack ? x.stack[0].area + x.stack[1].area : x.main.area + sumArea(x.kids); });
+  return g;
+}
+function place(r, x0, y0, x1, y1, out) { out.push(Object.assign({}, r, { x0: x0, y0: y0, x1: x1, y1: y1 })); }
+// hall: 'y0' si la circulación está del lado de y0, 'y1' si está del lado de y1
+function rowLayout(list, rect, hall, out, minFirst) {
   if (!list.length) return;
-  if (list.length === 1) { out.push(Object.assign({}, list[0], { x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1 })); return; }
-  var total = sumArea(list), acc = 0, best = 1, bestD = Infinity;
-  for (var i = 1; i < list.length; i++) {
-    acc += list[i - 1].area;
-    var d = Math.abs(acc - total / 2);
-    if (d < bestD) { bestD = d; best = i; }
+  var groups = groupRow(list), total = groups.reduce(function (s, g) { return s + g.area; }, 0);
+  var W = rect.x1 - rect.x0, D = rect.y1 - rect.y0, x = rect.x0;
+  var nearY = function (frac) { return hall === 'y0' ? [rect.y0, rect.y0 + D * frac] : [rect.y1 - D * frac, rect.y1]; };
+  var farY = function (frac) { return hall === 'y0' ? [rect.y0 + D * (1 - frac), rect.y1] : [rect.y0, rect.y0 + D * frac]; };
+  if (minFirst && groups.length > 1) {
+    // la pieza más grande va junto a la escalera y se ensancha para alcanzar el estar
+    var bi = 0; groups.forEach(function (g, i) { if (g.area > groups[bi].area) bi = i; });
+    groups.unshift(groups.splice(bi, 1)[0]);
   }
-  var a = list.slice(0, best), b = list.slice(best), fa = sumArea(a) / total;
-  var w = r.x1 - r.x0, h = r.y1 - r.y0;
-  if (w >= h) {
-    var xm = r.x0 + w * fa;
-    bisect(a, { x0: r.x0, y0: r.y0, x1: xm, y1: r.y1 }, out);
-    bisect(b, { x0: xm, y0: r.y0, x1: r.x1, y1: r.y1 }, out);
-  } else {
-    var ym = r.y0 + h * fa;
-    bisect(a, { x0: r.x0, y0: r.y0, x1: r.x1, y1: ym }, out);
-    bisect(b, { x0: r.x0, y0: ym, x1: r.x1, y1: r.y1 }, out);
-  }
+  // cada pieza recibe su ancho mínimo útil y el resto se reparte según su área
+  var mins = groups.map(function (g, i) { var m = minWidthOf(g); return (i === 0 && minFirst && groups.length > 1) ? Math.max(m, minFirst) : m; });
+  var sumMin = mins.reduce(function (a, b) { return a + b; }, 0);
+  var widths;
+  if (groups.length === 1) widths = [W];
+  else if (sumMin <= W) { var extra = W - sumMin; widths = groups.map(function (g, i) { return mins[i] + extra * g.area / total; }); }
+  else widths = groups.map(function (g) { return W * g.area / total; });
+  groups.forEach(function (g, gi) {
+    var w = gi === groups.length - 1 ? rect.x1 - x : widths[gi];
+    var xa = x, xb = x + w;
+    if (g.stack) {
+      var f = g.stack[0].area / g.area, ny = nearY(f), fy = farY(1 - f);
+      place(g.stack[0], xa, ny[0], xb, ny[1], out);
+      place(g.stack[1], xa, fy[0], xb, fy[1], out);
+    } else if (!g.kids.length) {
+      place(g.main, xa, rect.y0, xb, rect.y1, out);
+    } else {
+      var ka = sumArea(g.kids), kw = w * ka / g.area;
+      if (kw >= 1.3) {
+        place(g.main, xa, rect.y0, xb - kw, rect.y1, out);
+        var yy = hall === 'y0' ? rect.y1 : rect.y0;          // el primer hijo (baño) va hacia la fachada
+        g.kids.forEach(function (c) {
+          var d = D * c.area / ka;
+          if (hall === 'y0') { place(c, xb - kw, yy - d, xb, yy, out); yy -= d; }
+          else { place(c, xb - kw, yy, xb, yy + d, out); yy += d; }
+        });
+      } else {
+        var md = D * g.main.area / g.area, mn = nearY(g.main.area / g.area);
+        place(g.main, xa, mn[0], xb, mn[1], out);
+        var kx = xa, fy2 = farY(1 - g.main.area / g.area);
+        g.kids.forEach(function (c) { var cw = w * c.area / ka; place(c, kx, fy2[0], kx + cw, fy2[1], out); kx += cw; });
+      }
+    }
+    x = xb;
+  });
 }
 
+/* ---------- columna con pasillo lateral (lotes angostos): todas las piezas dan al pasillo ---------- */
+function minWidthOf(g) {
+  if (g.stack) return 1.3;
+  var m = g.main, base = m.group === 'bath' ? 1.3 : m.group === 'serv' ? 1.4 : m.group === 'open' ? 2.5 : 2.7;
+  return base + (g.kids.length ? 1.3 : 0);
+}
+function minDepthOf(r) { return (r.group === 'bath' || r.group === 'serv') ? 1.6 : r.group === 'open' ? 2.5 : 2.8; }
+function columnGroups(list) {
+  var g = [];
+  list.forEach(function (r) {
+    var last = g[g.length - 1];
+    if (r.pref && last && last.main.key === r.pref) { last.kids.push(r); return; }
+    g.push({ main: r, kids: [] });
+  });
+  g.forEach(function (x) { x.area = x.main.area + sumArea(x.kids); });
+  return g;
+}
+function columnDepth(list, Wc, s) {
+  return columnGroups(list).reduce(function (d, g) { return d + Math.max(minDepthOf(g.main), s * g.area / Wc); }, 0);
+}
+function columnLayout(list, rect, hall, out, k) {
+  var cw = 1.1, Wc = rect.x1 - rect.x0 - cw, groups = columnGroups(list);
+  place(room('corr' + k + (hall === 'y0' ? 'b' : 'f'), 'Pasillo', 0, 'circ', 'hall', 'porc'), rect.x1 - cw, rect.y0, rect.x1, rect.y1, out);
+  var depths = groups.map(function (g) { return Math.max(minDepthOf(g.main), g.area / Wc); });
+  var tot = depths.reduce(function (a, b) { return a + b; }, 0), D = rect.y1 - rect.y0;
+  depths = depths.map(function (d) { return d * D / tot; });
+  var y = hall === 'y0' ? rect.y0 : rect.y1;
+  groups.forEach(function (g, i) {
+    var d = depths[i], ya = hall === 'y0' ? y : y - d, yb = ya + d;
+    var xa = rect.x0, xb = rect.x0 + Wc;
+    if (g.kids.length) {
+      var ka = sumArea(g.kids), kw = Math.max(1.3, Wc * ka / g.area);
+      place(g.main, xa + kw, ya, xb, yb, out);
+      var yy = ya;
+      g.kids.forEach(function (c) { var cd = d * c.area / ka; place(c, xa, yy, xa + kw, yy + cd, out); yy += cd; });
+    } else place(g.main, xa, ya, xb, yb, out);
+    y = hall === 'y0' ? yb : ya;
+  });
+}
+
+// zona social abierta: la sala al frente a todo lo ancho; comedor y cocina detrás, lado a lado
+function socialLayout(list, rect, out) {
+  var first = list[0], rest = list.slice(1), tot = sumArea(list), D = rect.y1 - rect.y0;
+  var d1 = D * first.area / tot;
+  if (D - d1 < 2.4) d1 = Math.max(D * 0.45, D - 2.4);
+  place(first, rect.x0, rect.y0, rect.x1, rect.y0 + d1, out);
+  var x = rect.x0, ra = sumArea(rest);
+  rest.forEach(function (r, i) { var w = i === rest.length - 1 ? rect.x1 - x : (rect.x1 - rect.x0) * r.area / ra; place(r, x, rect.y0 + d1, x + w, rect.y1, out); x += w; });
+}
 function buildProject(inp) {
-  var prog = program(inp);
-  var N = prog.length;
-  var coreD = N > 1 ? 2.8 : 1.4;
+  var casa = inp.tipo === 'casa';
+  var prog = program(inp), N = prog.length;
+  var strip = !casa && N > 1, SW = 2.6;
+  var bandD = casa ? (N > 1 ? 2.6 : 1.2) : 0;
+  var stairL = 3.2; // largo del núcleo de escalera de la casa (sobre x)
   var sf = CONFIG.retiroFrente[inp.tipo], sb = CONFIG.retiroFondo[inp.tipo];
-  var availD = Math.max(4, inp.fondo - sf - sb);
-  var M = Math.max.apply(null, prog.map(function (l) { return sumArea(l.front) + sumArea(l.back); }));
-  var costM2 = CONFIG.costoM2[inp.acabado] * (inp.tipo === 'negocio' ? CONFIG.factorNegocio : 1);
+  var availD = Math.max(6, inp.fondo - sf - sb);
+  var Fs = Math.max.apply(null, prog.map(function (l) { return sumArea(l.front); }));
+  var Bs = Math.max.apply(null, prog.map(function (l) { return sumArea(l.back); }));
+  var costM2 = CONFIG.costoM2[inp.acabado] * (casa ? 1 : CONFIG.factorNegocio);
   var budgetArea = inp.presupuesto * (1 - CONFIG.reservaImprevistos) / costM2;
+  var maxFront = casa ? 5.6 : 10, maxBack = 5.2, minD = 3.0;
 
-  function fit(W) {
-    var C = W * coreD;
-    var sBudget = (budgetArea / N - C) / M;
-    var s = clamp(sBudget, 0.9, 1.45);
-    var fp = s * M + C;
-    var maxFp = Math.min(W * availD, CONFIG.cos * inp.frente * inp.fondo);
-    var landLimited = false;
-    if (fp > maxFp) { fp = maxFp; s = (fp - C) / M; landLimited = true; }
-    return { C: C, s: s, fp: fp, sBudget: sBudget, landLimited: landLimited };
+  var W = Math.min(inp.frente, 12), s = 1, Ls = 0, Lb = 0, landLimited = false;
+  for (var it = 0; it < 8; it++) {
+    var Wm = W - (strip ? SW : 0);
+    s = casa ? (budgetArea / N - W * bandD) / (Fs + Bs) : (budgetArea / N) * (Wm / W) / (Fs + Bs);
+    s = clamp(s, 0.85, 1.5);
+    Ls = s * Fs / Wm; Lb = s * Bs / Wm;
+    var shallow = Math.min(Ls, Lb);
+    if (shallow < minD - 0.01 && W > 6.6) { W = Math.max(6.5, W * shallow / minD); continue; }
+    break;
   }
-  var W = inp.frente, f = fit(W);
-  var tgtD = N > 1 ? 9.5 : 8;
-  for (var it = 0; it < 5; it++) { if (f.fp / W < tgtD - 0.05 && W > 7) { W = clamp(f.fp / tgtD, 7, inp.frente); f = fit(W); } }
   W = Math.round(W * 100) / 100;
-  var L = f.fp / W;
+  var Wm2 = W - (strip ? SW : 0);
+  // ¿cabe cada zona como fila? si no, pasa a columna con pasillo lateral
+  var modes = prog.map(function () { return { front: 'row', back: 'row' }; });
+  var colF = false, colB = false, needF = Ls, needB = Lb;
+  prog.forEach(function (l, k) {
+    ['front', 'back'].forEach(function (z) {
+      var lst = l[z];
+      if (strip && z === 'back') lst = lst.filter(function (r) { return r.furn !== 'bodega'; });
+      if (lst.length <= 1) { modes[k][z] = 'single'; return; }
+      if (lst.every(function (r) { return r.group === 'social'; })) { modes[k][z] = 'social'; return; }
+      var gr = groupRow(lst), need = gr.reduce(function (a, g) { return a + minWidthOf(g); }, 0);
+      if (casa && N > 1) need = Math.max(need, 4.3 + 1.3 * (gr.length - 1));
+      if (need <= Wm2 + 0.01) return;
+      modes[k][z] = 'col';
+      var d = columnDepth(lst, Wm2 - 1.1, s);
+      if (z === 'front') { colF = true; needF = Math.max(needF, d); } else { colB = true; needB = Math.max(needB, d); }
+    });
+  });
+  Ls = needF; Lb = needB;
+  var cap = function (f) { s *= f; Ls *= f; Lb *= f; landLimited = true; };
+  if (!colB && Lb > maxBack) cap(maxBack / Lb);
+  if (!colF && Ls > maxFront) cap(maxFront / Ls);
+  var L = Ls + bandD + Lb;
+  if (L > availD) { cap((availD - bandD) / (Ls + Lb)); L = availD; }
+  var maxFp = CONFIG.cos * inp.frente * inp.fondo;
+  if (W * L > maxFp) { cap((maxFp / W - bandD) / (Ls + Lb)); L = Ls + bandD + Lb; }
+  if (strip && L < 5.6) { var g = 5.6 / L; Ls *= g; Lb *= g; L = 5.6; }
+  Ls = Math.max(Ls, 2.6); Lb = Math.max(Lb, 2.4); L = Ls + bandD + Lb;
+  var patio = inp.frente - W >= 1.5;   // patio lateral: permite ventanas en el costado derecho
 
-  var ratios = prog.map(function (l) { var a = sumArea(l.front), b = sumArea(l.back); return a / (a + b); });
-  var r = ratios.reduce(function (s, x) { return s + x; }, 0) / ratios.length;
-  var Lf = (L - coreD) * r;
-  var front = { x0: 0, y0: 0, x1: W, y1: Lf };
-  var back = { x0: 0, y0: Lf + coreD, x1: W, y1: L };
-  var stairW = W < 6.5 ? 2.4 : 2.6;
-  var stair = N > 1 ? { x0: W - stairW, y0: Lf, x1: W, y1: Lf + coreD } : null;
+  var stair = null;
+  if (casa && N > 1) stair = { x0: 0, x1: Math.min(stairL, W - 3.2), y0: Ls, y1: Ls + bandD, open: 'x1' };
+  if (strip) stair = { x0: 0, x1: SW, y0: 1.8, y1: 5.2, open: 'y0' };
+  var mx0 = strip ? SW : 0;
 
   var levels = prog.map(function (l, k) {
     var rooms = [];
-    bisect(l.front, front, rooms);
-    bisect(l.back, back, rooms);
-    var hallName = k === 0 ? (inp.tipo === 'casa' ? 'Vestíbulo' : 'Pasillo') : 'Distribuidor';
-    rooms.push(room('hall' + k, hallName, 0, 'circ', null, 'porc', { x0: 0, y0: Lf, x1: stair ? stair.x0 : W, y1: Lf + coreD, isHall: true }));
-    if (stair) rooms.push(room('esc' + k, 'Escalera', 0, 'circ', null, 'porc', { x0: stair.x0, y0: stair.y0, x1: stair.x1, y1: stair.y1, isStair: true }));
+    var backList = l.back.slice();
+    var LsK = Ls;
+    if (!casa && k > 0) {   // en negocio cada nivel reparte su propio fondo
+      var fa = sumArea(l.front), ba = sumArea(backList);
+      var lbk = clamp(L * ba / (fa + ba), 2.6, Math.max(2.6, L - Ls));
+      if (modes[k].back === 'col') lbk = L - Ls;
+      LsK = L - lbk;
+    }
+    var front = { x0: mx0, y0: 0, x1: W, y1: LsK }, back = { x0: mx0, y0: LsK + bandD, x1: W, y1: L };
+    if (strip) {
+      var top = k === 0 ? room('acc', 'Acceso a niveles', 0, 'circ', 'hall', 'porc', { entry: true, sealed: true })
+                        : room('dist' + k, 'Distribuidor', 0, 'circ', 'hall', 'porc');
+      place(top, 0, 0, SW, 1.8, rooms);
+      if (L - 5.2 >= 1.2) {
+        var takeIdx = k === 0 ? backList.findIndex(function (r) { return r.furn === 'bodega'; }) : -1;
+        var rem = takeIdx >= 0 ? backList.splice(takeIdx, 1)[0] : room('bdx' + k, k === 0 ? 'Bodega' : 'Archivo', 0, 'serv', 'bodega', 'conc');
+        place(rem, 0, 5.2, SW, L, rooms);
+        place(room('esc' + k, 'Escalera', 0, 'circ', null, 'porc', { isStair: true, sealed: true }), stair.x0, stair.y0, stair.x1, stair.y1, rooms);
+      } else {
+        stair.y1 = L;
+        place(room('esc' + k, 'Escalera', 0, 'circ', null, 'porc', { isStair: true, sealed: true }), stair.x0, stair.y0, stair.x1, L, rooms);
+      }
+    }
+    // frente
+    if (l.front.length === 1) place(l.front[0], front.x0, front.y0, front.x1, front.y1, rooms);
+    else if (modes[k].front === 'social') socialLayout(l.front, front, rooms);
+    else if (modes[k].front === 'col') columnLayout(l.front, front, 'y1', rooms, k);
+    else rowLayout(l.front, front, 'y1', rooms, stair && casa ? stair.x1 + 1.1 : 0);
+    // franja central
+    if (bandD) {
+      if (stair) {
+        place(room('esc' + k, 'Escalera', 0, 'circ', null, 'porc', { isStair: true }), stair.x0, stair.y0, stair.x1, stair.y1, rooms);
+        place(l.band[0], stair.x1, Ls, W, Ls + bandD, rooms);
+      } else place(l.band[0], 0, Ls, W, Ls + bandD, rooms);
+    }
+    // fondo
+    if (backList.length === 1) place(backList[0], back.x0, back.y0, back.x1, back.y1, rooms);
+    else if (modes[k].back === 'col') columnLayout(backList, back, 'y0', rooms, k);
+    else rowLayout(backList, back, 'y0', rooms, stair && casa ? stair.x1 + 1.1 : 0);
     rooms.forEach(function (rm) { rm.w = rm.x1 - rm.x0; rm.h = rm.y1 - rm.y0; rm.area = rm.w * rm.h; });
-    var walls = buildWalls(rooms, W, L, k, inp);
-    return { k: k, rooms: rooms, segs: walls.segs, entrance: walls.entrance, unreached: walls.unreached };
+    var walls = buildWalls(rooms, W, L, k, inp, patio);
+    var items = furnishLevel(rooms, walls.segs, k);
+    return { k: k, rooms: rooms, segs: walls.segs, entrance: walls.entrances[0] || null, entrances: walls.entrances, unreached: walls.unreached, items: items };
   });
 
-  var P = { inp: inp, N: N, W: W, L: L, Lf: Lf, coreD: coreD, stair: stair, sf: sf, sb: sb,
-            levels: levels, costM2: costM2, budgetArea: budgetArea, s: f.s, landLimited: f.landLimited,
-            H: CONFIG.alturaNivel };
+  var cramped = levels.some(function (lv) { return lv.rooms.some(function (r) { return r.group === 'priv' && Math.min(r.w, r.h) < 2.4; }); });
+  var P = { inp: inp, N: N, W: W, L: L, Lf: Ls, coreD: bandD, stair: stair, sf: sf, sb: sb, patio: patio, cramped: cramped,
+            levels: levels, costM2: costM2, budgetArea: budgetArea, s: s, landLimited: landLimited, H: CONFIG.alturaNivel };
   P.quant = quantities(P);
   P.cost = costing(P);
   return P;
 }
 
 /* ---------- muros, puertas y ventanas ---------- */
-function buildWalls(rooms, W, L, k, inp) {
+function sideOf(r, axis, c) {
+  if (axis === 'h') { if (Math.abs(c - r.y0) < EPS) return 'b'; if (Math.abs(c - r.y1) < EPS) return 't'; }
+  else { if (Math.abs(c - r.x0) < EPS) return 'l'; if (Math.abs(c - r.x1) < EPS) return 'r'; }
+  return null;
+}
+function buildWalls(rooms, W, L, k, inp, patio) {
   var segs = [];
   rooms.forEach(function (a, i) {
-    var edges = [
-      { axis: 'h', c: a.y0, s0: a.x0, s1: a.x1, side: 'b' },
-      { axis: 'h', c: a.y1, s0: a.x0, s1: a.x1, side: 't' },
-      { axis: 'v', c: a.x0, s0: a.y0, s1: a.y1, side: 'l' },
-      { axis: 'v', c: a.x1, s0: a.y0, s1: a.y1, side: 'r' }
-    ];
-    edges.forEach(function (e) {
+    [{ axis: 'h', c: a.y0, s0: a.x0, s1: a.x1, side: 'b' }, { axis: 'h', c: a.y1, s0: a.x0, s1: a.x1, side: 't' },
+     { axis: 'v', c: a.x0, s0: a.y0, s1: a.y1, side: 'l' }, { axis: 'v', c: a.x1, s0: a.y0, s1: a.y1, side: 'r' }].forEach(function (e) {
       var parts = [];
       rooms.forEach(function (b, j) {
         if (j === i) return;
         var touch = false, o0, o1;
-        if (e.side === 'b') { touch = Math.abs(b.y1 - e.c) < EPS; o0 = Math.max(e.s0, b.x0); o1 = Math.min(e.s1, b.x1); }
-        if (e.side === 't') { touch = Math.abs(b.y0 - e.c) < EPS; o0 = Math.max(e.s0, b.x0); o1 = Math.min(e.s1, b.x1); }
-        if (e.side === 'l') { touch = Math.abs(b.x1 - e.c) < EPS; o0 = Math.max(e.s0, b.y0); o1 = Math.min(e.s1, b.y1); }
-        if (e.side === 'r') { touch = Math.abs(b.x0 - e.c) < EPS; o0 = Math.max(e.s0, b.y0); o1 = Math.min(e.s1, b.y1); }
+        if (e.side === 'b') { touch = Math.abs(b.y1 - e.c) < 1e-4; o0 = Math.max(e.s0, b.x0); o1 = Math.min(e.s1, b.x1); }
+        if (e.side === 't') { touch = Math.abs(b.y0 - e.c) < 1e-4; o0 = Math.max(e.s0, b.x0); o1 = Math.min(e.s1, b.x1); }
+        if (e.side === 'l') { touch = Math.abs(b.x1 - e.c) < 1e-4; o0 = Math.max(e.s0, b.y0); o1 = Math.min(e.s1, b.y1); }
+        if (e.side === 'r') { touch = Math.abs(b.x0 - e.c) < 1e-4; o0 = Math.max(e.s0, b.y0); o1 = Math.min(e.s1, b.y1); }
         if (touch && o1 - o0 > 0.05) parts.push({ s0: o0, s1: o1, j: j });
       });
       parts.sort(function (p, q) { return p.s0 - q.s0; });
@@ -903,10 +1054,10 @@ function buildWalls(rooms, W, L, k, inp) {
       var pushExt = function (s0, s1) {
         if (s1 - s0 < 0.05) return;
         var side = null;
-        if (e.side === 'b' && Math.abs(e.c) < EPS) side = 'front';
-        else if (e.side === 't' && Math.abs(e.c - L) < EPS) side = 'back';
-        else if (e.side === 'l' && Math.abs(e.c) < EPS) side = 'left';
-        else if (e.side === 'r' && Math.abs(e.c - W) < EPS) side = 'right';
+        if (e.side === 'b' && Math.abs(e.c) < 1e-4) side = 'front';
+        else if (e.side === 't' && Math.abs(e.c - L) < 1e-4) side = 'back';
+        else if (e.side === 'l' && Math.abs(e.c) < 1e-4) side = 'left';
+        else if (e.side === 'r' && Math.abs(e.c - W) < 1e-4) side = 'right';
         segs.push({ axis: e.axis, c: e.c, s0: s0, s1: s1, a: i, b: -1, ext: true, side: side, openings: [] });
       };
       parts.forEach(function (p) {
@@ -918,50 +1069,51 @@ function buildWalls(rooms, W, L, k, inp) {
     });
   });
 
-  var isOpenGroup = function (g) { return g === 'social' || g === 'circ'; };
   segs.forEach(function (s) {
     s.len = s.s1 - s.s0;
     var A = rooms[s.a];
     if (s.ext) { s.low = A.group === 'open'; return; }
     var B = rooms[s.b];
+    if (A.sealed || B.sealed) { if (A.group === 'circ' && B.group === 'circ') s.omit = true; return; }
     if ((A.group === 'social' && B.group === 'social') || (A.group === 'circ' && B.group === 'circ')) { s.omit = true; return; }
-    if (isOpenGroup(A.group) && isOpenGroup(B.group)) {
-      var wlen = Math.min(s.len - 0.5, 2.4);
-      if (wlen >= 0.9) s.openings.push({ t0: (s.len - wlen) / 2, t1: (s.len + wlen) / 2, bottom: 0, top: 2.3, kind: 'wide' });
+    var soc = function (r) { return r.group === 'social' || r.group === 'circ'; };
+    if (soc(A) && soc(B)) {
+      var wlen = Math.min(s.len - 0.4, 2.6);
+      if (wlen >= 0.9) s.openings.push({ t0: (s.len - wlen) / 2, t1: (s.len + wlen) / 2, bottom: 0, top: 2.35, kind: 'wide' });
       else s.omit = true;
     }
   });
 
-  // Conectividad: cada pieza recibe una puerta hacia una zona ya alcanzable
-  var hallIdx = rooms.findIndex(function (r) { return r.isHall; });
-  var reached = {}; reached[hallIdx] = true;
+  // conectividad: cada pieza recibe una sola puerta hacia la zona ya alcanzable
+  var reached = {};
+  rooms.forEach(function (r, i) { if (r.group === 'circ' || (k === 0 && r.entry)) reached[i] = true; });
   var linkOpen = function () {
     var changed = true;
     while (changed) {
       changed = false;
       segs.forEach(function (s) {
-        if (s.ext) return;
-        var open = s.omit || s.openings.length > 0;
-        if (!open) return;
+        if (s.ext || !(s.omit || s.openings.length)) return;
         if (reached[s.a] && !reached[s.b]) { reached[s.b] = true; changed = true; }
         if (reached[s.b] && !reached[s.a]) { reached[s.a] = true; changed = true; }
       });
     }
   };
   linkOpen();
-  var score = function (rFrom, rTo) {
-    if (rTo.pref && rFrom.key === rTo.pref) return 10;
-    if (rFrom.group === 'circ') return 3;
-    if (rFrom.group === 'social') return 2;
-    if (rTo.group === 'bath' && rFrom.group === 'priv') return 0.5;
+  var score = function (f, t) {
+    if (t.pref && f.key === t.pref) return 10;
+    if (f.group === 'circ') return 4;
+    if (f.group === 'social') return 3;
+    if (t.group === 'bath' && f.group === 'serv') return 0.2;
+    if (t.group === 'bath' && f.group === 'priv') return 0.5;
     return 1;
   };
   var phase = function (filter) {
-    var guard = 0;
-    while (guard++ < 50) {
+    for (var guard = 0; guard < 60; guard++) {
       var best = null;
       segs.forEach(function (s) {
-        if (s.ext || s.omit || s.openings.length || s.len < 1.0) return;
+        if (s.ext || s.omit || s.openings.length || s.len < 1.05) return;
+        var A = rooms[s.a], B = rooms[s.b];
+        if (A.isStair || B.isStair || A.sealed || B.sealed) return;
         var from, to;
         if (reached[s.a] && !reached[s.b]) { from = s.a; to = s.b; }
         else if (reached[s.b] && !reached[s.a]) { from = s.b; to = s.a; }
@@ -971,57 +1123,366 @@ function buildWalls(rooms, W, L, k, inp) {
         if (!best || sc > best.sc) best = { s: s, sc: sc, to: to };
       });
       if (!best) break;
-      var dw = 0.9, s = best.s;
-      s.openings.push({ t0: (s.len - dw) / 2, t1: (s.len + dw) / 2, bottom: 0, top: 2.1, kind: 'door' });
+      var dw = rooms[best.to].group === 'bath' ? 0.75 : 0.9, s = best.s;
+      var t0 = s.len > 2.2 ? 0.25 : (s.len - dw) / 2;   // la puerta cerca de una esquina deja libre el muro
+      s.openings.push({ t0: t0, t1: t0 + dw, bottom: 0, top: 2.1, kind: 'door', to: best.to });
       reached[best.to] = true;
       linkOpen();
     }
   };
+  if (k === 0) rooms.forEach(function (r, i) {
+    if (r.group !== 'serv' || reached[i]) return;
+    var good = segs.some(function (s) {
+      if (s.ext || s.omit || s.len < 1.05 || (s.a !== i && s.b !== i)) return false;
+      var o = rooms[s.a === i ? s.b : s.a];
+      return !o.isStair && !o.sealed && (o.group === 'social' || (o.group === 'circ'));
+    });
+    if (good) return;
+    var ex = segs.filter(function (s) { return s.ext && s.a === i && s.side === 'back' && s.len >= 1.0; })[0];
+    if (!ex) return;
+    var dw = Math.min(0.9, ex.len - 0.2);
+    ex.openings.push({ t0: (ex.len - dw) / 2, t1: (ex.len + dw) / 2, bottom: 0, top: 2.1, kind: 'door', to: i });
+    ex.patioDoor = true; reached[i] = true;
+  });
   phase(function (r) { return r.group !== 'bath' && !r.pref; });
   phase(function () { return true; });
 
-  // Acceso principal
-  var entrance = null;
+  // accesos desde la calle
+  var entrances = [];
   if (k === 0) {
-    var cands = segs.filter(function (s) { return s.ext && s.side === 'front'; });
-    cands.sort(function (p, q) {
-      var gp = rooms[p.a].group === 'social' ? 1 : 0, gq = rooms[q.a].group === 'social' ? 1 : 0;
-      return (gq - gp) || (q.len - p.len);
-    });
-    var es = cands[0];
-    if (es) {
-      var store = inp.tipo === 'negocio' && (rooms[es.a].key === 'ventas' || rooms[es.a].key === 'salon' || rooms[es.a].key === 'rec');
-      var dw2 = store ? 1.2 : 1.0;
-      var t0 = es.len < 2.2 ? (es.len - dw2) / 2 : 0.45;
-      es.openings.push({ t0: t0, t1: t0 + dw2, bottom: 0, top: 2.3, kind: 'entry' });
+    rooms.forEach(function (r, i) {
+      if (!r.entry) return;
+      var cands = segs.filter(function (s) { return s.ext && s.side === 'front' && s.a === i; }).sort(function (p, q) { return q.len - p.len; });
+      var es = cands[0]; if (!es) return;
+      var store = !!r.store, dw = store ? 1.2 : 1.0;
+      var t0 = (store || r.group === 'circ') ? (es.len - dw) / 2 : Math.min(0.5, (es.len - dw) / 2);
+      es.openings.push({ t0: t0, t1: t0 + dw, bottom: 0, top: store ? 2.4 : 2.3, kind: 'entry', to: i, glass: store });
       es.entry = true;
-      entrance = { x: es.s0 + t0 + dw2 / 2, y: 0 };
-      if (store && es.len - (t0 + dw2) > 1.2) es.openings.push({ t0: t0 + dw2 + 0.15, t1: es.len - 0.3, bottom: 0.15, top: 2.5, kind: 'glass' });
-      if (!store && es.len - (t0 + dw2) > 1.8) es.openings.push({ t0: t0 + dw2 + 0.5, t1: Math.min(es.len - 0.4, t0 + dw2 + 0.5 + 2.8), bottom: 0.5, top: 2.3, kind: 'window' });
-      if (!reached[es.a]) reached[es.a] = true;
-    }
+      if (store) {
+        if (t0 > 0.6) es.openings.push({ t0: 0.2, t1: t0 - 0.1, bottom: 0.15, top: 2.4, kind: 'glass' });
+        if (es.len - (t0 + dw) > 0.6) es.openings.push({ t0: t0 + dw + 0.1, t1: es.len - 0.2, bottom: 0.15, top: 2.4, kind: 'glass' });
+      } else if (r.group !== 'circ' && es.len - (t0 + dw) > 1.6) {
+        es.openings.push({ t0: t0 + dw + 0.6, t1: Math.min(es.len - 0.4, t0 + dw + 0.6 + 3.0), bottom: 0.45, top: 2.3, kind: 'window' });
+      }
+      entrances.push({ x: es.s0 + t0 + dw / 2, y: 0, room: i });
+      reached[i] = true;
+    });
   }
 
-  // Ventanas en fachadas frontal y posterior (las laterales son colindancia)
+  // ventanas: fachadas frontal y posterior, y costado derecho si hay patio lateral
   segs.forEach(function (s) {
-    if (!s.ext || s.entry || s.low) return;
-    if (s.side !== 'front' && s.side !== 'back') return;
+    if (!s.ext || s.entry || s.low || s.patioDoor) return;
+    var ok = s.side === 'front' || s.side === 'back' || (s.side === 'right' && patio);
+    if (!ok) return;
     var A = rooms[s.a];
-    if (A.group === 'circ' || s.len < 1.2) return;
+    if (A.isStair || s.len < 1.2) return;
     var w, bottom, top = 2.3, kind = 'window';
-    if (A.group === 'bath') { w = 0.8; bottom = 1.6; top = 2.2; }
+    if (A.group === 'circ') { w = Math.min(1.2, s.len - 0.6); bottom = 1.0; }
+    else if (A.group === 'bath') { w = Math.min(0.9, s.len - 0.5); bottom = 1.6; top = 2.2; }
     else if (A.group === 'serv') { w = Math.min(1.2, s.len - 0.6); bottom = 1.2; top = 2.2; }
-    else if (A.group === 'social' && s.side === 'back' && k === 0) { w = Math.min(s.len - 0.6, 3.2); bottom = 0; top = 2.4; kind = 'glass'; }
+    else if ((A.group === 'social' || A.group === 'open') && s.side === 'back' && k === 0) { w = Math.min(s.len - 0.6, 3.2); bottom = 0; top = 2.4; kind = 'glass'; }
     else if (A.group === 'social') { w = Math.min(s.len - 0.8, 3.0); bottom = 0.45; }
-    else { w = Math.min(s.len - 0.8, 1.8); bottom = 0.9; }
+    else { w = Math.min(s.len - 0.9, 1.8); bottom = 0.9; }
     if (w < 0.6) return;
     s.openings.push({ t0: (s.len - w) / 2, t1: (s.len + w) / 2, bottom: bottom, top: top, kind: kind });
   });
-  // Acceso a terraza abierta desde su lado interior ya queda como puerta por conectividad
+  // la terraza se abre al nivel con una puerta de vidrio
+  segs.forEach(function (s) {
+    if (s.ext) return;
+    s.openings.forEach(function (o) { if (o.kind === 'door' && (rooms[s.a].group === 'open' || rooms[s.b].group === 'open')) { o.glass = true; o.t1 = Math.min(s.len - 0.1, o.t0 + 1.6); o.top = 2.3; } });
+  });
 
   var unreached = rooms.filter(function (r, i) { return !reached[i]; }).map(function (r) { return r.name; });
   segs.forEach(function (s) { s.openings.sort(function (p, q) { return p.t0 - q.t0; }); });
-  return { segs: segs, entrance: entrance, unreached: unreached };
+  return { segs: segs, entrances: entrances, unreached: unreached };
+}
+
+/* ---------- mobiliario: se coloca contra muros sólidos, sin tapar puertas ni ventanas ---------- */
+function furnishLevel(rooms, segs, k) {
+  var items = [];
+  rooms.forEach(function (r, i) {
+    if (r.isStair) return;
+    var sides = { b: [], t: [], l: [], r: [] }, zones = [];
+    var sideLen = { b: r.w, t: r.w, l: r.h, r: r.h }, sideStart = { b: r.x0, t: r.x0, l: r.y0, r: r.y0 };
+    segs.forEach(function (s) {
+      if (s.a !== i && s.b !== i) return;
+      var sd = sideOf(r, s.axis, s.c); if (!sd) return;
+      if (s.omit) return;
+      var solid = [{ a: s.s0, b: s.s1, low: true, tall: true }];
+      s.openings.forEach(function (o) {
+        var a0 = s.s0 + o.t0, a1 = s.s0 + o.t1;
+        var lowOK = o.kind === 'window' && o.bottom >= 0.85;
+        var next = [];
+        solid.forEach(function (iv) {
+          if (a1 <= iv.a || a0 >= iv.b) { next.push(iv); return; }
+          if (a0 > iv.a) next.push({ a: iv.a, b: a0, low: iv.low, tall: iv.tall });
+          next.push({ a: Math.max(a0, iv.a), b: Math.min(a1, iv.b), low: iv.low && lowOK, tall: false });
+          if (a1 < iv.b) next.push({ a: a1, b: iv.b, low: iv.low, tall: iv.tall });
+        });
+        solid = next;
+        if (o.kind === 'door' || o.kind === 'entry' || o.kind === 'wide' || (o.kind === 'glass' && o.bottom < 0.2)) {
+          var dz = o.kind === 'wide' ? 1.3 : 1.05;
+          zones.push(sideRect(r, sd, a0 - 0.15, a1 + 0.15, dz));
+        }
+      });
+      if (s.low) solid.forEach(function (iv) { iv.tall = false; });
+      sides[sd] = sides[sd].concat(solid);
+    });
+    var occ = [];
+    function free(rect) {
+      if (rect.x0 < r.x0 + TW - 0.01 || rect.x1 > r.x1 - TW + 0.01 || rect.y0 < r.y0 + TW - 0.01 || rect.y1 > r.y1 - TW + 0.01) return false;
+      for (var z = 0; z < zones.length; z++) if (hit(rect, zones[z])) return false;
+      for (var o = 0; o < occ.length; o++) if (hit(rect, occ[o])) return false;
+      return true;
+    }
+    // intervalos continuos de muro apto (alto o bajo) por lado
+    function runs(sd, tall) {
+      var iv = sides[sd].filter(function (x) { return tall ? x.tall : x.low; }).sort(function (p, q) { return p.a - q.a; });
+      var out = [];
+      iv.forEach(function (x) { var l = out[out.length - 1]; if (l && x.a - l.b < 0.02) l.b = Math.max(l.b, x.b); else out.push({ a: x.a, b: x.b }); });
+      return out;
+    }
+    // coloca un mueble de largo len y fondo dep contra el lado sd; devuelve el marco
+    function against(sd, len, dep, tall, align) {
+      var best = null;
+      runs(sd, tall).forEach(function (iv) {
+        var a = iv.a + TW, b = iv.b - TW;
+        if (b - a < len) return;
+        var cands = align === 'end' ? [b - len, a] : align === 'start' ? [a, b - len] : [(a + b - len) / 2, a, b - len, a + (b - a - len) * 0.25, a + (b - a - len) * 0.75];
+        for (var c = 0; c < cands.length; c++) {
+          var rc = sideRect(r, sd, cands[c], cands[c] + len, dep);
+          if (free(rc)) { if (!best || (b - a) > best.room) best = { rect: rc, a0: cands[c], room: b - a, sd: sd }; break; }
+        }
+      });
+      return best;
+    }
+    function bestSide(len, dep, tall, exclude, align) {
+      var order = ['b', 't', 'l', 'r'].filter(function (s) { return !exclude || exclude.indexOf(s) < 0; });
+      order.sort(function (p, q) { return totalRun(q, tall) - totalRun(p, tall); });
+      for (var o = 0; o < order.length; o++) { var f = against(order[o], len, dep, tall, align); if (f) return f; }
+      return null;
+    }
+    function totalRun(sd, tall) { return runs(sd, tall).reduce(function (s, x) { return s + x.b - x.a; }, 0); }
+    // piezas en coordenadas locales: u a lo largo del muro (0..len), v desde el muro hacia dentro
+    function emit(f, parts) {
+      parts.forEach(function (p) {
+        var rc = local(r, f.sd, f.a0, p.u0, p.u1, p.v0, p.v1);
+        items.push({ x0: rc.x0, y0: rc.y0, x1: rc.x1, y1: rc.y1, b: p.b || 0, h: p.h, mat: p.mat, shape: p.shape || 'box', plan: p.plan !== false });
+      });
+      occ.push(f.rect);
+    }
+    function center(w, d, h, mat, extra) {
+      var cx = (r.x0 + r.x1) / 2, cy = (r.y0 + r.y1) / 2, longX = r.w >= r.h;
+      var sx = longX ? w : d, sy = longX ? d : w;
+      var tries = [[0, 0], [0.4, 0], [-0.4, 0], [0, 0.4], [0, -0.4], [0.8, 0], [-0.8, 0], [0, 0.8], [0, -0.8]];
+      for (var t = 0; t < tries.length; t++) {
+        var rc = { x0: cx - sx / 2 + tries[t][0], x1: cx + sx / 2 + tries[t][0], y0: cy - sy / 2 + tries[t][1], y1: cy + sy / 2 + tries[t][1] };
+        var pad = extra || 0;
+        var test = { x0: rc.x0 - pad, x1: rc.x1 + pad, y0: rc.y0 - pad, y1: rc.y1 + pad };
+        if (free(test)) { occ.push(test); return { rect: rc, longX: longX }; }
+      }
+      return null;
+    }
+    function box(rc, b, h, mat, shape, plan) { items.push({ x0: rc.x0, y0: rc.y0, x1: rc.x1, y1: rc.y1, b: b, h: h, mat: mat, shape: shape || 'box', plan: plan !== false }); }
+    var minDim = Math.min(r.w, r.h), f, c;
+    var H = CONFIG.alturaNivel - 0.2;
+    if (r.group !== 'open' && r.area > 3) box({ x0: (r.x0 + r.x1) / 2 - 0.15, x1: (r.x0 + r.x1) / 2 + 0.15, y0: (r.y0 + r.y1) / 2 - 0.15, y1: (r.y0 + r.y1) / 2 + 0.15 }, H - 0.04, 0.03, 'light', 'cyl', false);
+
+    switch (r.furn) {
+      case 'cama': case 'cama2':
+        var bw = r.furn === 'cama' ? (minDim >= 3.2 ? 1.95 : 1.6) : (minDim >= 3.0 ? 1.4 : 1.0);
+        var doorSides = sidesWithDoor(r, segs, i);
+        f = bestSide(bw + 1.0, 2.05, true, doorSides) || bestSide(bw + 1.0, 2.05, true) || bestSide(bw, 2.05, true) || bestSide(bw + 1.0, 2.05, false) || bestSide(bw, 2.05, false);
+        if (!f && bw > 1.0) { bw = 1.0; f = bestSide(bw, 2.0, true) || bestSide(bw, 2.0, false); }
+        if (f) {
+          var ns = f.rect && (Math.abs((f.sd === 'b' || f.sd === 't' ? f.rect.x1 - f.rect.x0 : f.rect.y1 - f.rect.y0) - (bw + 1.0)) < 0.01);
+          var o0 = ns ? 0.5 : 0;
+          var parts = [
+            { u0: o0, u1: o0 + bw, v0: 0, v1: 0.08, h: 1.05, mat: 'furnWood' },
+            { u0: o0, u1: o0 + bw, v0: 0.08, v1: 2.05, h: 0.48, mat: 'white' },
+            { u0: o0 + 0.02, u1: o0 + bw - 0.02, v0: 0.75, v1: 2.05, b: 0.48, h: 0.06, mat: 'duvet', plan: false },
+            { u0: o0 + 0.12, u1: o0 + bw / 2 - 0.05, v0: 0.15, v1: 0.5, b: 0.48, h: 0.12, mat: 'white', plan: false },
+            { u0: o0 + bw / 2 + 0.05, u1: o0 + bw - 0.12, v0: 0.15, v1: 0.5, b: 0.48, h: 0.12, mat: 'white', plan: false }];
+          if (ns) { parts.push({ u0: 0, u1: 0.45, v0: 0, v1: 0.42, h: 0.5, mat: 'furnWood' }); parts.push({ u0: bw + 0.55, u1: bw + 1.0, v0: 0, v1: 0.42, h: 0.5, mat: 'furnWood' }); }
+          emit(f, parts);
+        }
+        var cl = Math.min(2.4, Math.max(1.2, minDim - 1.0));
+        f = bestSide(cl, 0.6, true, null, 'end') || bestSide(1.2, 0.6, true, null, 'end');
+        if (f) emit(f, [{ u0: 0, u1: f.rect ? (f.sd === 'b' || f.sd === 't' ? f.rect.x1 - f.rect.x0 : f.rect.y1 - f.rect.y0) : cl, v0: 0, v1: 0.6, h: 2.2, mat: 'closet' }]);
+        break;
+      case 'sala': case 'estar':
+        var sl = Math.min(2.4, minDim - 0.6);
+        if (sl < 1.4) break;
+        f = bestSide(sl, 0.9, true);
+        if (f) {
+          emit(f, [{ u0: 0, u1: sl, v0: 0, v1: 0.9, h: 0.42, mat: 'fabric' }, { u0: 0, u1: sl, v0: 0, v1: 0.22, b: 0.42, h: 0.42, mat: 'fabric' },
+                   { u0: 0, u1: 0.18, v0: 0, v1: 0.9, b: 0.42, h: 0.2, mat: 'fabric' }, { u0: sl - 0.18, u1: sl, v0: 0, v1: 0.9, b: 0.42, h: 0.2, mat: 'fabric' }]);
+          var opp = { b: 't', t: 'b', l: 'r', r: 'l' }[f.sd];
+          var tv = against(opp, Math.min(1.8, sl), 0.45, true);
+          if (tv) emit(tv, [{ u0: 0, u1: Math.min(1.8, sl), v0: 0, v1: 0.45, h: 0.5, mat: 'dark' }, { u0: 0.1, u1: Math.min(1.8, sl) - 0.1, v0: 0.12, v1: 0.17, b: 0.75, h: 0.7, mat: 'screen' }]);
+          var span = (f.sd === 'b' || f.sd === 't') ? r.h : r.w;
+          if (span > 2.6) {
+            var cc = local(r, f.sd, f.a0, sl / 2 - 0.55, sl / 2 + 0.55, 1.3, 1.85);
+            if (free(cc)) { box(cc, 0, 0.38, 'furnWood'); occ.push(cc); }
+            var rg = local(r, f.sd, f.a0, sl / 2 - 1.3, sl / 2 + 1.3, 0.75, Math.min(span - 0.5, 2.6));
+            box(rg, 0, 0.012, 'rug', 'box', false);
+          }
+        }
+        if (r.area > 14) { var pl = bestSide(0.45, 0.45, true, null, 'end'); if (pl) emit(pl, [{ u0: 0, u1: 0.45, v0: 0, v1: 0.45, h: 0.45, mat: 'pot', shape: 'cyl' }, { u0: 0, u1: 0.45, v0: 0, v1: 0.45, b: 0.45, h: 0.8, mat: 'leaf', shape: 'sphere', plan: false }]); }
+        break;
+      case 'comedor':
+        var big = minDim >= 2.7 && Math.max(r.w, r.h) >= 3.3;
+        var tw = big ? 1.8 : 1.2, td = big ? 0.95 : 0.8;
+        c = center(tw + 1.0, td + 1.0, 0.75);
+        if (c) {
+          var cx0 = (c.rect.x0 + c.rect.x1) / 2, cy0 = (c.rect.y0 + c.rect.y1) / 2, lx = c.longX;
+          var T = lx ? { x0: cx0 - tw / 2, x1: cx0 + tw / 2, y0: cy0 - td / 2, y1: cy0 + td / 2 } : { x0: cx0 - td / 2, x1: cx0 + td / 2, y0: cy0 - tw / 2, y1: cy0 + tw / 2 };
+          box(T, 0, 0.75, 'furnWood');
+          var nCh = big ? 3 : 2;
+          for (var q = 0; q < nCh; q++) {
+            var off = (q - (nCh - 1) / 2) * (tw / nCh);
+            [-1, 1].forEach(function (sg) {
+              var ch = lx ? { x0: cx0 + off - 0.22, x1: cx0 + off + 0.22, y0: cy0 + sg * (td / 2 + 0.12) - 0.22, y1: cy0 + sg * (td / 2 + 0.12) + 0.22 }
+                          : { x0: cx0 + sg * (td / 2 + 0.12) - 0.22, x1: cx0 + sg * (td / 2 + 0.12) + 0.22, y0: cy0 + off - 0.22, y1: cy0 + off + 0.22 };
+              box(ch, 0, 0.46, 'fabric2');
+            });
+          }
+          box({ x0: cx0 - 0.22, x1: cx0 + 0.22, y0: cy0 - 0.22, y1: cy0 + 0.22 }, H - 0.9, 0.25, 'lamp', 'cyl', false);
+        }
+        break;
+      case 'cocina':
+        var kl = Math.min(3.6, Math.max(1.8, Math.max(r.w, r.h) - 0.6));
+        f = bestSide(kl, 0.62, false) || bestSide(1.8, 0.62, false);
+        if (f) {
+          var L2 = (f.sd === 'b' || f.sd === 't') ? f.rect.x1 - f.rect.x0 : f.rect.y1 - f.rect.y0;
+          var pk = [{ u0: 0, u1: L2, v0: 0, v1: 0.62, h: 0.88, mat: 'cabinet' }, { u0: 0, u1: L2, v0: 0, v1: 0.64, b: 0.88, h: 0.04, mat: 'counter', plan: false },
+                    { u0: L2 * 0.25, u1: L2 * 0.25 + 0.6, v0: 0.08, v1: 0.5, b: 0.9, h: 0.02, mat: 'steel', plan: false },
+                    { u0: L2 * 0.68, u1: L2 * 0.68 + 0.6, v0: 0.08, v1: 0.55, b: 0.9, h: 0.02, mat: 'dark', plan: false }];
+          var tallRun = against(f.sd, L2, 0.36, true);
+          if (tallRun && Math.abs(tallRun.a0 - f.a0) < 0.01) pk.push({ u0: 0, u1: L2, v0: 0, v1: 0.36, b: 1.5, h: 0.7, mat: 'cabinet', plan: false });
+          emit(f, pk);
+        }
+        f = bestSide(0.8, 0.72, true, null, 'end');
+        if (f) emit(f, [{ u0: 0, u1: 0.8, v0: 0, v1: 0.72, h: 1.85, mat: 'steel' }]);
+        if (minDim >= 3.6) { c = center(1.6, 0.9, 0.92, 'dark', 0.8); if (c) box(c.rect, 0, 0.92, 'dark'); }
+        break;
+      case 'bano': case 'mbano':
+        if (r.furn === 'bano') {
+          f = bestSide(1.0, 0.9, false, null, 'end') || bestSide(0.9, 0.9, false, null, 'start');
+          if (f) emit(f, [{ u0: 0, u1: (f.sd === 'b' || f.sd === 't') ? f.rect.x1 - f.rect.x0 : f.rect.y1 - f.rect.y0, v0: 0, v1: 0.9, h: 0.05, mat: 'white' },
+                          { u0: 0, u1: (f.sd === 'b' || f.sd === 't') ? f.rect.x1 - f.rect.x0 : f.rect.y1 - f.rect.y0, v0: 0.88, v1: 0.9, h: 2.0, mat: 'glass', plan: true }]);
+        }
+        f = bestSide(0.45, 0.7, false);
+        if (f) emit(f, [{ u0: 0, u1: 0.42, v0: 0.18, v1: 0.7, h: 0.42, mat: 'white' }, { u0: 0, u1: 0.42, v0: 0, v1: 0.2, h: 0.8, mat: 'white' }]);
+        var vl = r.furn === 'bano' ? 0.9 : 0.5;
+        f = bestSide(vl, 0.48, true) || bestSide(vl, 0.48, false);
+        if (f) emit(f, [{ u0: 0, u1: vl, v0: 0, v1: 0.48, h: 0.85, mat: 'cabinet' }, { u0: 0.05, u1: vl - 0.05, v0: 0, v1: 0.02, b: 1.1, h: 0.75, mat: 'mirror', plan: false }]);
+        break;
+      case 'lav':
+        f = bestSide(1.3, 0.65, false);
+        if (f) emit(f, [{ u0: 0, u1: 0.65, v0: 0, v1: 0.65, h: 0.9, mat: 'white' }, { u0: 0.7, u1: 1.3, v0: 0, v1: 0.6, h: 0.85, mat: 'steel' }]);
+        break;
+      case 'vest':
+        ['b', 't', 'l', 'r'].forEach(function (sd) { var ff = against(sd, Math.max(0.8, ((sd === 'b' || sd === 't') ? r.w : r.h) - 0.4), 0.5, true); if (ff) emit(ff, [{ u0: 0, u1: (sd === 'b' || sd === 't') ? ff.rect.x1 - ff.rect.x0 : ff.rect.y1 - ff.rect.y0, v0: 0, v1: 0.5, h: 2.2, mat: 'closet' }]); });
+        break;
+      case 'escritorio':
+        f = bestSide(1.4, 0.7, false);
+        if (f) emit(f, [{ u0: 0, u1: 1.4, v0: 0, v1: 0.7, h: 0.75, mat: 'furnWood' }, { u0: 0.45, u1: 0.95, v0: 0.85, v1: 1.35, h: 0.48, mat: 'fabric2' }, { u0: 0.4, u1: 1.0, v0: 0.05, v1: 0.1, b: 0.9, h: 0.38, mat: 'screen', plan: false }]);
+        f = bestSide(1.0, 0.35, true);
+        if (f) emit(f, [{ u0: 0, u1: 1.0, v0: 0, v1: 0.35, h: 1.9, mat: 'furnWood' }]);
+        break;
+      case 'oficinas':
+        var nx2 = Math.max(1, Math.floor((r.w - 0.6) / 2.2)), ny2 = Math.max(1, Math.floor((r.h - 0.6) / 2.0));
+        for (var a1 = 0; a1 < nx2; a1++) for (var b1 = 0; b1 < ny2; b1++) {
+          var ox = r.x0 + (r.w / nx2) * (a1 + 0.5), oy = r.y0 + (r.h / ny2) * (b1 + 0.5);
+          var dk = { x0: ox - 0.7, x1: ox + 0.7, y0: oy - 0.55, y1: oy + 0.15 };
+          var pad2 = { x0: dk.x0 - 0.2, x1: dk.x1 + 0.2, y0: dk.y0 - 0.2, y1: dk.y1 + 0.7 };
+          if (!free(pad2)) continue;
+          occ.push(pad2); box(dk, 0, 0.75, 'white'); box({ x0: ox - 0.25, x1: ox + 0.25, y0: oy + 0.25, y1: oy + 0.7 }, 0, 0.48, 'fabric2');
+          box({ x0: ox - 0.3, x1: ox + 0.3, y0: oy - 0.5, y1: oy - 0.46 }, 0.9, 0.38, 'screen', 'box', false);
+        }
+        break;
+      case 'recepcion':
+        f = bestSide(1.8, 0.6, true);
+        if (f) emit(f, [{ u0: 0, u1: 1.8, v0: 0.6, v1: 0.9, h: 1.05, mat: 'cabinet' }, { u0: 0.6, u1: 1.1, v0: 0.05, v1: 0.5, h: 0.48, mat: 'fabric2' }]);
+        f = bestSide(2.2, 0.55, false);
+        if (f) emit(f, [{ u0: 0, u1: 2.2, v0: 0, v1: 0.55, h: 0.45, mat: 'fabric' }, { u0: 0, u1: 2.2, v0: 0, v1: 0.12, b: 0.45, h: 0.4, mat: 'fabric' }]);
+        break;
+      case 'consult':
+        f = bestSide(1.4, 0.7, false);
+        if (f) emit(f, [{ u0: 0, u1: 1.4, v0: 0, v1: 0.7, h: 0.75, mat: 'furnWood' }, { u0: 0.45, u1: 0.95, v0: 0.1, v1: 0.6, b: 0, h: 0, mat: 'white', plan: false }]);
+        if (f) { var chA = local(r, f.sd, f.a0, 0.2, 0.65, 0.95, 1.4), chB = local(r, f.sd, f.a0, 0.75, 1.2, 0.95, 1.4); box(chA, 0, 0.46, 'fabric2'); box(chB, 0, 0.46, 'fabric2'); }
+        f = bestSide(1.9, 0.7, true);
+        if (f) emit(f, [{ u0: 0, u1: 1.9, v0: 0, v1: 0.7, h: 0.75, mat: 'white' }, { u0: 0, u1: 0.5, v0: 0, v1: 0.7, b: 0.75, h: 0.15, mat: 'white', plan: false }]);
+        f = bestSide(0.8, 0.45, true);
+        if (f) emit(f, [{ u0: 0, u1: 0.8, v0: 0, v1: 0.45, h: 1.8, mat: 'cabinet' }]);
+        break;
+      case 'ventas':
+        var used = [];
+        ['l', 'r', 't'].forEach(function (sd) {
+          var len = ((sd === 'b' || sd === 't') ? r.w : r.h) - 1.6;
+          if (len < 1.2) return;
+          var ff = against(sd, len, 0.45, true) || against(sd, len * 0.6, 0.45, true);
+          if (ff) { var Lx = (sd === 'b' || sd === 't') ? ff.rect.x1 - ff.rect.x0 : ff.rect.y1 - ff.rect.y0;
+            var sp = [{ u0: 0, u1: Lx, v0: 0, v1: 0.45, h: 0.1, mat: 'dark' }];
+            for (var sh = 0; sh < 4; sh++) sp.push({ u0: 0, u1: Lx, v0: 0, v1: 0.45, b: 0.4 + sh * 0.45, h: 0.03, mat: 'shelf', plan: false });
+            sp.push({ u0: 0, u1: Lx, v0: 0, v1: 0.03, h: 2.0, mat: 'dark', plan: false });
+            emit(ff, sp); used.push(sd); }
+        });
+        c = center(1.8, 0.6, 1.0, 'dark', 0.9);
+        if (c) box(c.rect, 0, 1.0, 'dark');
+        break;
+      case 'mesas': case 'terraza':
+        if (r.bar) { f = bestSide(Math.min(3.0, Math.max(r.w, r.h) * 0.5), 0.6, true); if (f) { var bl = (f.sd === 'b' || f.sd === 't') ? f.rect.x1 - f.rect.x0 : f.rect.y1 - f.rect.y0; emit(f, [{ u0: 0, u1: bl, v0: 0, v1: 0.6, h: 1.05, mat: 'furnWood' }, { u0: 0, u1: bl, v0: 0, v1: 0.3, b: 1.4, h: 0.8, mat: 'shelf', plan: false }]); } }
+        var nx3 = Math.max(1, Math.floor((r.w - 0.4) / 2.2)), ny3 = Math.max(1, Math.floor((r.h - 0.4) / 2.2));
+        for (var a2 = 0; a2 < nx3; a2++) for (var b2 = 0; b2 < ny3; b2++) {
+          var tx = r.x0 + (r.w / nx3) * (a2 + 0.5), ty = r.y0 + (r.h / ny3) * (b2 + 0.5);
+          var zone = { x0: tx - 0.9, x1: tx + 0.9, y0: ty - 0.9, y1: ty + 0.9 };
+          if (!free(zone)) continue;
+          occ.push(zone);
+          if (r.furn === 'terraza') { box({ x0: tx - 0.35, x1: tx + 0.35, y0: ty - 0.8, y1: ty + 0.8 }, 0, 0.35, 'white'); continue; }
+          box({ x0: tx - 0.4, x1: tx + 0.4, y0: ty - 0.4, y1: ty + 0.4 }, 0, 0.75, 'furnWood');
+          [[-0.62, 0], [0.62, 0], [0, -0.62], [0, 0.62]].forEach(function (o) { box({ x0: tx + o[0] - 0.2, x1: tx + o[0] + 0.2, y0: ty + o[1] - 0.2, y1: ty + o[1] + 0.2 }, 0, 0.46, 'fabric2'); });
+        }
+        if (r.group === 'open') ['b', 't', 'l', 'r'].forEach(function (sd) { var pf = against(sd, 1.2, 0.4, false, 'start'); if (pf) emit(pf, [{ u0: 0, u1: 1.2, v0: 0, v1: 0.4, h: 0.45, mat: 'pot' }, { u0: 0.05, u1: 1.15, v0: 0.05, v1: 0.35, b: 0.45, h: 0.35, mat: 'leaf', plan: false }]); });
+        break;
+      case 'cocinapro':
+        ['t', 'l', 'r', 'b'].slice(0, 3).forEach(function (sd) { var len = ((sd === 'b' || sd === 't') ? r.w : r.h) - 0.6; if (len < 1.0) return; var ff = against(sd, len, 0.7, false); if (ff) { var Lk = (sd === 'b' || sd === 't') ? ff.rect.x1 - ff.rect.x0 : ff.rect.y1 - ff.rect.y0; emit(ff, [{ u0: 0, u1: Lk, v0: 0, v1: 0.7, h: 0.9, mat: 'steel' }]); } });
+        break;
+      case 'barra':
+        f = bestSide(Math.max(1.2, Math.max(r.w, r.h) - 0.8), 0.6, false);
+        if (f) { var bl2 = (f.sd === 'b' || f.sd === 't') ? f.rect.x1 - f.rect.x0 : f.rect.y1 - f.rect.y0; emit(f, [{ u0: 0, u1: bl2, v0: 0, v1: 0.6, h: 1.05, mat: 'furnWood' }]); }
+        break;
+      case 'bodega':
+        ['l', 'r', 't', 'b'].forEach(function (sd) { var len = ((sd === 'b' || sd === 't') ? r.w : r.h) - 0.4; if (len < 0.9) return; var ff = against(sd, len, 0.5, true); if (ff) { var Lb2 = (sd === 'b' || sd === 't') ? ff.rect.x1 - ff.rect.x0 : ff.rect.y1 - ff.rect.y0; var sp2 = [{ u0: 0, u1: Lb2, v0: 0, v1: 0.5, h: 0.05, mat: 'steel' }]; for (var s3 = 1; s3 < 5; s3++) sp2.push({ u0: 0, u1: Lb2, v0: 0, v1: 0.5, b: s3 * 0.45, h: 0.03, mat: 'steel', plan: false }); sp2.push({ u0: 0, u1: 0.04, v0: 0, v1: 0.5, h: 2.0, mat: 'steel', plan: false }); sp2.push({ u0: Lb2 - 0.04, u1: Lb2, v0: 0, v1: 0.5, h: 2.0, mat: 'steel', plan: false }); emit(ff, sp2); } });
+        break;
+      case 'hall':
+        if (r.area > 3) { f = bestSide(0.45, 0.45, true, null, 'end'); if (f) emit(f, [{ u0: 0, u1: 0.45, v0: 0, v1: 0.45, h: 0.45, mat: 'pot', shape: 'cyl' }, { u0: 0, u1: 0.45, v0: 0, v1: 0.45, b: 0.45, h: 0.8, mat: 'leaf', shape: 'sphere', plan: false }]); }
+        break;
+    }
+  });
+  return items;
+}
+function hit(a, b) { return a.x0 < b.x1 - 0.01 && a.x1 > b.x0 + 0.01 && a.y0 < b.y1 - 0.01 && a.y1 > b.y0 + 0.01; }
+function sideRect(r, sd, a0, a1, dep) {
+  if (sd === 'b') return { x0: a0, x1: a1, y0: r.y0 + TW, y1: r.y0 + TW + dep };
+  if (sd === 't') return { x0: a0, x1: a1, y0: r.y1 - TW - dep, y1: r.y1 - TW };
+  if (sd === 'l') return { y0: a0, y1: a1, x0: r.x0 + TW, x1: r.x0 + TW + dep };
+  return { y0: a0, y1: a1, x0: r.x1 - TW - dep, x1: r.x1 - TW };
+}
+function local(r, sd, a0, u0, u1, v0, v1) {
+  if (sd === 'b') return { x0: a0 + u0, x1: a0 + u1, y0: r.y0 + TW + v0, y1: r.y0 + TW + v1 };
+  if (sd === 't') return { x0: a0 + u0, x1: a0 + u1, y0: r.y1 - TW - v1, y1: r.y1 - TW - v0 };
+  if (sd === 'l') return { y0: a0 + u0, y1: a0 + u1, x0: r.x0 + TW + v0, x1: r.x0 + TW + v1 };
+  return { y0: a0 + u0, y1: a0 + u1, x0: r.x1 - TW - v1, x1: r.x1 - TW - v0 };
+}
+function sidesWithDoor(r, segs, i) {
+  var out = [];
+  segs.forEach(function (s) {
+    if ((s.a !== i && s.b !== i) || !s.openings.some(function (o) { return o.kind === 'door' || o.kind === 'entry'; })) return;
+    var sd = sideOf(r, s.axis, s.c); if (sd && out.indexOf(sd) < 0) out.push(sd);
+  });
+  return out;
 }
 
 /* Divide un muro en piezas sólidas alrededor de sus vanos (alturas relativas al nivel) */
@@ -1516,7 +1977,21 @@ function Viewer3D(container, canvas, hud) {
     trunk: new T.MeshStandardMaterial({ color: 0x6b5340, roughness: 0.9 }),
     leaf: new T.MeshStandardMaterial({ color: 0x5d7a45, roughness: 0.9, flatShading: true }),
     leaf2: new T.MeshStandardMaterial({ color: 0x7a9455, roughness: 0.9, flatShading: true }),
-    stair: new T.MeshStandardMaterial({ color: 0xd8d3ca, roughness: 0.6 })
+    stair: new T.MeshStandardMaterial({ color: 0xd8d3ca, roughness: 0.6 }),
+    duvet: new T.MeshStandardMaterial({ color: 0xcfc3b0, roughness: 0.95 }),
+    screen: new T.MeshStandardMaterial({ color: 0x0d0e10, roughness: 0.25, metalness: 0.3 }),
+    pot: new T.MeshStandardMaterial({ color: 0xb9a48a, roughness: 0.9 }),
+    light: new T.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff4dc, emissiveIntensity: 0.9 }),
+    lamp: new T.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.5, emissive: 0x332a1a, emissiveIntensity: 0.4 }),
+    closet: new T.MeshStandardMaterial({ color: 0xbfa27e, roughness: 0.7 }),
+    cabinet: new T.MeshStandardMaterial({ color: 0xe9e5dc, roughness: 0.6 }),
+    counter: new T.MeshStandardMaterial({ color: 0x3b3a38, roughness: 0.35 }),
+    steel: new T.MeshStandardMaterial({ color: 0xb8bcbf, roughness: 0.35, metalness: 0.6 }),
+    mirror: new T.MeshStandardMaterial({ color: 0xcfd9de, roughness: 0.05, metalness: 0.8 }),
+    shelf: new T.MeshStandardMaterial({ color: 0xa47b52, roughness: 0.7 }),
+    doorLight: new T.MeshStandardMaterial({ color: 0xc8b291, roughness: 0.65 }),
+    car: new T.MeshStandardMaterial({ color: 0x7d8790, roughness: 0.3, metalness: 0.5 }),
+    tire: new T.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 0.9 })
   };
 
   var world = new T.Group(); scene.add(world);
@@ -1552,100 +2027,43 @@ function Viewer3D(container, canvas, hud) {
     return out;
   }
 
-  /* ---- muebles básicos, orientados al lado largo de cada pieza ---- */
-  function furnish(g, r, y) {
-    var cx = (r.x0 + r.x1) / 2, cz = (r.y0 + r.y1) / 2;
-    var longX = r.w >= r.h, U = longX ? r.w : r.h, V = longX ? r.h : r.w;
-    function put(u, v, wu, h, dv, mat, yb) {
-      var x = longX ? cx + u : cx + v, z = longX ? cz + v : cz + u;
-      var sx = longX ? wu : dv, sz = longX ? dv : wu;
-      return addBox(g, sx, h, sz, mat, x, y + (yb || 0) + h / 2, z);
-    }
-    var e = V / 2;
-    switch (r.furn) {
-      case 'sala': case 'estar':
-        if (U < 2.6 || V < 2.4) break;
-        put(0, e - 0.55, Math.min(2.3, U - 0.6), 0.42, 0.85, M.fabric);
-        put(0, e - 0.2, Math.min(2.3, U - 0.6), 0.4, 0.18, M.fabric, 0.4);
-        put(0, e - 1.55, 1.1, 0.38, 0.55, M.furnWood);
-        put(0, e - 1.4, Math.min(2.8, U - 0.4), 0.01, Math.min(2.0, V - 0.6), M.rug);
-        if (r.furn === 'estar') put(0, -e + 0.2, 1.6, 0.5, 0.35, M.dark);
-        break;
-      case 'comedor':
-        if (U < 2.4 || V < 2.2) break;
-        put(0, 0, 1.8, 0.75, 0.95, M.furnWood);
-        for (var i = -1; i <= 1; i++) { put(i * 0.6, 0.75, 0.45, 0.45, 0.45, M.fabric2); put(i * 0.6, -0.75, 0.45, 0.45, 0.45, M.fabric2); }
-        break;
-      case 'cocina':
-        var cl = Math.min(U - 0.3, 3.6);
-        put(0, e - 0.32, cl, 0.9, 0.62, M.white);
-        put(0, e - 0.18, cl, 0.7, 0.35, M.furnWood, 1.5);
-        if (V >= 3.0) put(0, -0.2, Math.min(1.8, U - 1.4), 0.92, 0.9, M.dark);
-        break;
-      case 'cama': case 'cama2':
-        if (V < 2.5 || U < 2.2) break;
-        var bw = r.furn === 'cama' ? 1.9 : 1.4;
-        put(0, e - 1.05, bw, 0.5, 2.0, M.white);
-        put(0, e - 0.08, bw + 0.1, 1.0, 0.08, M.furnWood);
-        if (U > bw + 1.2) { put(bw / 2 + 0.3, e - 0.25, 0.45, 0.5, 0.4, M.furnWood); put(-bw / 2 - 0.3, e - 0.25, 0.45, 0.5, 0.4, M.furnWood); }
-        break;
-      case 'bano': case 'mbano':
-        put(-U / 2 + 0.35, e - 0.33, 0.4, 0.42, 0.62, M.white);
-        if (U > 1.6) put(-U / 2 + 1.15, e - 0.25, Math.min(0.9, U - 1.4), 0.85, 0.5, M.white);
-        if (r.furn === 'bano' && U > 2.2) put(U / 2 - 0.9, 0, 0.02, 2.0, V - 0.2, M.glass);
-        break;
-      case 'lav': put(0, e - 0.35, 0.65, 0.9, 0.65, M.white); break;
-      case 'vest': put(0, e - 0.3, U - 0.3, 2.1, 0.55, M.furnWood); break;
-      case 'escritorio': case 'recepcion':
-        if (U < 2 || V < 2) break;
-        put(0, e - 0.75, 1.5, 0.75, 0.7, M.furnWood);
-        put(0, e - 1.4, 0.5, 0.48, 0.5, M.fabric2);
-        if (r.furn === 'recepcion') for (var j = -1; j <= 1; j++) put(j * 0.7, -e + 0.4, 0.5, 0.45, 0.5, M.fabric);
-        break;
-      case 'consult':
-        if (U < 2.4 || V < 2.2) break;
-        put(-U / 4, e - 0.6, 1.3, 0.75, 0.65, M.furnWood);
-        put(U / 4, -e + 0.6, 1.9, 0.75, 0.7, M.white);
-        break;
-      case 'ventas':
-        put(0, -e + 0.25, Math.max(1, U - 1.2), 1.8, 0.4, M.furnWood);
-        put(0, e - 1.0, Math.min(2.4, U - 1), 1.0, 0.6, M.dark);
-        break;
-      case 'oficinas':
-        for (var a = -1; a <= 1; a += 2) put(a * U / 4, 0, 1.6, 0.75, 1.2, M.white);
-        break;
-      case 'mesas': case 'terraza':
-        var nx = Math.max(1, Math.floor((U - 0.6) / 2.1)), nv = Math.max(1, Math.floor((V - 0.6) / 2.1));
-        for (var p = 0; p < nx; p++) for (var q = 0; q < nv; q++) {
-          var uu = -U / 2 + (U / nx) * (p + 0.5), vv = -V / 2 + (V / nv) * (q + 0.5);
-          if (r.furn === 'terraza') { put(uu, vv, 0.6, 0.35, 1.6, M.white); }
-          else { put(uu, vv, 0.8, 0.75, 0.8, M.furnWood); put(uu - 0.6, vv, 0.42, 0.45, 0.42, M.fabric2); put(uu + 0.6, vv, 0.42, 0.45, 0.42, M.fabric2); }
-        }
-        if (r.furn === 'terraza') { put(-U / 2 + 0.4, e - 0.35, 0.6, 0.7, 0.6, M.leaf); put(U / 2 - 0.4, e - 0.35, 0.6, 0.7, 0.6, M.leaf2); }
-        break;
-      case 'cocinapro':
-        put(0, e - 0.35, U - 0.4, 0.9, 0.7, M.white);
-        put(0, -0.1, Math.max(0.8, U - 2), 0.9, 0.8, M.white);
-        break;
-      case 'bodega':
-        put(0, e - 0.25, U - 0.3, 1.9, 0.45, M.frame);
-        break;
-    }
+  /* ---- mobiliario calculado por el motor (respeta puertas y ventanas) ---- */
+  function drawItems(g, items, y, col) {
+    items.forEach(function (it) {
+      var w = it.x1 - it.x0, d = it.y1 - it.y0, h = it.h;
+      if (h <= 0.001 || w <= 0.001 || d <= 0.001) return;
+      var mat = M[it.mat] || M.white, m;
+      if (it.shape === 'cyl') m = new T.Mesh(new T.CylinderGeometry(Math.min(w, d) / 2, Math.min(w, d) / 2 * 0.85, h, 18), mat);
+      else if (it.shape === 'sphere') m = new T.Mesh(new T.IcosahedronGeometry(Math.min(w, d) * 0.62, 1), mat);
+      else m = new T.Mesh(new T.BoxGeometry(w, h, d), mat);
+      m.position.set((it.x0 + it.x1) / 2, y + it.b + h / 2, (it.y0 + it.y1) / 2);
+      if (it.mat !== 'light' && it.mat !== 'glass' && it.mat !== 'rug') { m.castShadow = true; m.receiveShadow = true; }
+      g.add(m);
+      if (col && it.plan && it.b < 0.3 && h >= 0.4 && it.mat !== 'glass') col.push({ x0: it.x0 + 0.06, x1: it.x1 - 0.06, z0: it.y0 + 0.06, z1: it.y1 - 0.06 });
+    });
   }
 
+  /* ---- escalera en U: arranca y llega por el lado abierto ---- */
   function stairMesh(g, st, y, H) {
-    var sw = st.x1 - st.x0, run = (sw - 1.0) / 9, rise = H / 18;
-    var halfD = (st.y1 - st.y0) / 2 - 0.1;
-    for (var i = 0; i < 9; i++) {
-      var top = (i + 1) * rise;
-      addBox(g, run, top, halfD, M.stair, st.x0 + (i + 0.5) * run, y + top / 2, st.y0 + 0.05 + halfD / 2);
+    var rise = H / 18, alongX = st.open === 'x0' || st.open === 'x1';
+    var len = alongX ? st.x1 - st.x0 : st.y1 - st.y0, wid = alongX ? st.y1 - st.y0 : st.x1 - st.x0;
+    var run = (len - 1.0) / 9, half = wid / 2 - 0.08;
+    function put(u0, u1, w0, w1, top) {
+      var x0, x1, z0, z1;
+      if (alongX) { if (st.open === 'x1') { x1 = st.x1 - u0; x0 = st.x1 - u1; } else { x0 = st.x0 + u0; x1 = st.x0 + u1; } z0 = st.y0 + w0; z1 = st.y0 + w1; }
+      else { if (st.open === 'y0') { z0 = st.y0 + u0; z1 = st.y0 + u1; } else { z1 = st.y1 - u0; z0 = st.y1 - u1; } x0 = st.x0 + w0; x1 = st.x0 + w1; }
+      addBox(g, x1 - x0, top, z1 - z0, M.stair, (x0 + x1) / 2, y + top / 2, (z0 + z1) / 2);
     }
-    var land = 9 * rise;
-    addBox(g, 0.95, land, st.y1 - st.y0 - 0.1, M.stair, st.x1 - 0.5, y + land / 2, (st.y0 + st.y1) / 2);
-    for (var j = 0; j < 9; j++) {
-      var t2 = land + (j + 1) * rise;
-      addBox(g, run, t2, halfD, M.stair, st.x1 - 1.0 - (j + 0.5) * run, y + t2 / 2, st.y1 - 0.05 - halfD / 2);
-    }
+    for (var i = 0; i < 9; i++) put(i * run, (i + 1) * run, 0.06, 0.06 + half, (i + 1) * rise);
+    put(len - 1.0, len - 0.06, 0.06, wid - 0.06, 9 * rise);
+    for (var j = 0; j < 9; j++) put(len - 1.0 - (j + 1) * run, len - 1.0 - j * run, wid - 0.06 - half, wid - 0.06, 9 * rise + (j + 1) * rise);
+  }
+  function railing(g, x0, z0, x1, z1, y) {
+    var len = Math.hypot(x1 - x0, z1 - z0); if (len < 0.1) return;
+    var alongX = Math.abs(x1 - x0) > Math.abs(z1 - z0);
+    var cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    if (alongX) { addBox(g, len, 0.95, 0.02, M.glass, cx, y + 0.5, cz, true); addBox(g, len, 0.04, 0.06, M.frame, cx, y + 1.0, cz); }
+    else { addBox(g, 0.02, 0.95, len, M.glass, cx, y + 0.5, cz, true); addBox(g, 0.06, 0.04, len, M.frame, cx, y + 1.0, cz); }
   }
 
   function clearWorld() {
@@ -1682,6 +2100,14 @@ function Viewer3D(container, canvas, hud) {
       if (F > 8) tree(1.4, L + backFree * 0.6, 0.8);
     }
     if (F - W > 2) addFloor(site, W, 0, F, Math.min(L, D - sf), -0.02, 'grass');
+    if (inp.tipo === 'casa' && sf >= 2.6 && W >= 6.4) {
+      var ent = P.levels[0].entrance, cxCar = ent && ent.x < W / 2 ? W - 2.5 : 2.5, cz = -sf / 2 - 0.1;
+      addBox(site, 4.3, 0.62, 1.8, M.car, cxCar, 0.55, cz);
+      addBox(site, 2.3, 0.5, 1.62, M.screen, cxCar - 0.2, 1.1, cz);
+      [[-1.4, -0.82], [1.4, -0.82], [-1.4, 0.82], [1.4, 0.82]].forEach(function (o) {
+        var wh = new T.Mesh(new T.CylinderGeometry(0.33, 0.33, 0.22, 16), M.tire); wh.rotation.x = Math.PI / 2; wh.position.set(cxCar + o[0], 0.33, cz + o[1]); wh.castShadow = true; site.add(wh);
+      });
+    }
 
     /* niveles */
     P.levels.forEach(function (lv, k) {
@@ -1693,13 +2119,25 @@ function Viewer3D(container, canvas, hud) {
       lv.rooms.forEach(function (r) {
         if (r.isStair && k > 0) return;
         addFloor(g, r.x0, r.y0, r.x1, r.y1, y + 0.006, r.floor);
-        furnish(g, r, y);
       });
-      if (P.stair && k < P.N - 1) stairMesh(g, P.stair, y, H);
-      if (P.stair && k > 0) {
-        addBox(g, 0.03, 1.0, P.stair.y1 - P.stair.y0, M.glass, P.stair.x0, y + 0.5, (P.stair.y0 + P.stair.y1) / 2, true);
+      drawItems(g, lv.items || [], y, col);
+      var st = P.stair;
+      if (st && k < P.N - 1) stairMesh(g, st, y, H);
+      if (st && k > 0) {
+        var si = lv.rooms.findIndex(function (r) { return r.isStair; });
+        var alongX = st.open === 'x0' || st.open === 'x1', wid = alongX ? st.y1 - st.y0 : st.x1 - st.x0;
+        lv.segs.forEach(function (sg) {
+          if (sg.ext || (sg.a !== si && sg.b !== si)) return;
+          if (!(sg.omit || sg.openings.some(function (o) { return o.kind === 'wide'; }))) return;
+          var a0 = sg.s0, a1 = sg.s1;
+          var onOpen = (st.open === 'x1' && sg.axis === 'v' && Math.abs(sg.c - st.x1) < 1e-4) || (st.open === 'x0' && sg.axis === 'v' && Math.abs(sg.c - st.x0) < 1e-4) ||
+                       (st.open === 'y0' && sg.axis === 'h' && Math.abs(sg.c - st.y0) < 1e-4) || (st.open === 'y1' && sg.axis === 'h' && Math.abs(sg.c - st.y1) < 1e-4);
+          if (onOpen) { var lim = (alongX ? st.y0 : st.x0) + wid / 2; a1 = Math.min(a1, lim); }
+          if (a1 - a0 < 0.1) return;
+          if (sg.axis === 'h') railing(g, a0, sg.c, a1, sg.c, y); else railing(g, sg.c, a0, sg.c, a1, y);
+        });
       }
-      if (P.stair) col.push({ x0: P.stair.x0 + 0.05, x1: P.stair.x1, z0: P.stair.y0 + 0.05, z1: P.stair.y1 - 0.05 });
+      if (st) col.push({ x0: st.x0 + 0.05, x1: st.x1 - 0.05, z0: st.y0 + 0.05, z1: st.y1 - 0.05 });
 
       lv.segs.forEach(function (s) {
         if (s.omit) return;
@@ -1718,20 +2156,38 @@ function Viewer3D(container, canvas, hud) {
           var a0 = s.s0 + o.t0, a1 = s.s0 + o.t1, len = a1 - a0, mid = (a0 + a1) / 2;
           if (o.kind === 'window' || o.kind === 'glass') {
             var h = o.top - o.bottom, cy = y + o.bottom + h / 2;
-            if (s.axis === 'h') { addBox(g, len, h, 0.02, M.glass, mid, cy, s.c, true); addBox(g, len, 0.05, t + 0.02, M.frame, mid, y + o.bottom + 0.025, s.c, true); }
-            else { addBox(g, 0.02, h, len, M.glass, s.c, cy, mid, true); addBox(g, t + 0.02, 0.05, len, M.frame, s.c, y + o.bottom + 0.025, mid, true); }
+            var fr = function (along, dh, cyy, ca) { if (s.axis === 'h') addBox(g, along, dh, 0.06, M.frame, ca, cyy, s.c, true); else addBox(g, 0.06, dh, along, M.frame, s.c, cyy, ca, true); };
+            if (s.axis === 'h') addBox(g, len, h, 0.02, M.glass, mid, cy, s.c, true); else addBox(g, 0.02, h, len, M.glass, s.c, cy, mid, true);
+            fr(len, 0.05, y + o.bottom + 0.025, mid); fr(len, 0.05, y + o.top - 0.025, mid);
+            fr(0.05, h, cy, a0 + 0.025); fr(0.05, h, cy, a1 - 0.025);
+            if (len > 1.5) fr(0.04, h, cy, mid);
+            if (o.bottom > 0.3) { if (s.axis === 'h') addBox(g, len + 0.1, 0.04, t + 0.08, M.slab, mid, y + o.bottom - 0.02, s.c); else addBox(g, t + 0.08, 0.04, len + 0.1, M.slab, s.c, y + o.bottom - 0.02, mid); }
             if (o.kind === 'window' && h > 0.3 && o.bottom > 0) {
               if (s.axis === 'h') col.push({ x0: a0, x1: a1, z0: s.c - t / 2, z1: s.c + t / 2 });
               else col.push({ x0: s.c - t / 2, x1: s.c + t / 2, z0: a0, z1: a1 });
             }
           }
-          if (o.kind === 'entry') {
-            var leaf = new T.Mesh(new T.BoxGeometry(len - 0.05, o.top - 0.02, 0.05), M.door);
-            var pivot = new T.Group();
-            pivot.position.set(a0 + 0.02, y, s.c + 0.05);
-            leaf.position.set((len - 0.05) / 2, (o.top - 0.02) / 2, 0);
-            pivot.add(leaf); pivot.rotation.y = -1.15; leaf.castShadow = true;
-            g.add(pivot);
+          if (o.kind === 'door' || o.kind === 'entry') {
+            // hoja abierta a 90° contra el muro, dentro de la pieza a la que da servicio
+            var to = lv.rooms[o.to], lw = len - 0.04, lh = o.top - 0.02, dir;
+            var mat = o.glass ? M.glass : o.kind === 'entry' ? M.door : M.doorLight;
+            if (s.axis === 'h') {
+              dir = to && Math.abs(to.y0 - s.c) < 1e-4 ? 1 : -1;
+              addBox(g, 0.04, lh, lw, mat, a0 + 0.03, y + lh / 2, s.c + dir * (TW + lw / 2), !!o.glass);
+              if (o.glass) { addBox(g, 0.06, lh, 0.06, M.frame, a0 + 0.03, y + lh / 2, s.c + dir * (TW + lw), true); addBox(g, 0.06, 0.06, lw, M.frame, a0 + 0.03, y + lh, s.c + dir * (TW + lw / 2), true); }
+              addBox(g, len + 0.08, 0.06, t + 0.04, M.frame, mid, y + o.top + 0.03, s.c, true);
+            } else {
+              dir = to && Math.abs(to.x0 - s.c) < 1e-4 ? 1 : -1;
+              addBox(g, lw, lh, 0.04, mat, s.c + dir * (TW + lw / 2), y + lh / 2, a0 + 0.03, !!o.glass);
+              if (o.glass) { addBox(g, 0.06, lh, 0.06, M.frame, s.c + dir * (TW + lw), y + lh / 2, a0 + 0.03, true); addBox(g, lw, 0.06, 0.06, M.frame, s.c + dir * (TW + lw / 2), y + lh, a0 + 0.03, true); }
+              addBox(g, t + 0.04, 0.06, len + 0.08, M.frame, s.c, y + o.top + 0.03, mid, true);
+            }
+            if (o.kind === 'entry' && k === 0) {
+              if (to && to.store) {
+                addBox(g, s.len + 0.2, 0.32, 0.12, M.accent, s.s0 + s.len / 2, y + 2.75, s.c - 0.08);
+                addBox(g, s.len, 0.06, 1.1, M.accent, s.s0 + s.len / 2, y + 2.62, s.c - 0.6);
+              } else addBox(g, len + 1.0, 0.12, 1.1, M.slab, mid, y + 2.5, s.c - 0.55);
+            }
           }
         });
       });
@@ -1758,6 +2214,10 @@ function Viewer3D(container, canvas, hud) {
     addBox(roofGroup, W + pt, par, pt, M.wall, W / 2, top + par / 2, L);
     addBox(roofGroup, pt, par, L, M.wall, 0, top + par / 2, L / 2);
     addBox(roofGroup, pt, par, L, M.wall, W, top + par / 2, L / 2);
+    if (inp.tipo === 'casa') {
+      var tk = new T.Mesh(new T.CylinderGeometry(0.55, 0.55, 1.25, 20), M.dark); tk.position.set(0.9, top + 0.25 + 0.62, L - 0.9); tk.castShadow = true; roofGroup.add(tk);
+      addBox(roofGroup, 1.4, 0.25, 1.4, M.slab, 0.9, top + 0.12, L - 0.9);
+    }
     if (acab !== 'esencial') {
       for (var k2 = 1; k2 <= P.N; k2++) addBox(roofGroup, W + 0.3, 0.22, 0.75, M.accent, W / 2, k2 * H - 0.09, -0.36);
     }
@@ -1804,9 +2264,9 @@ function Viewer3D(container, canvas, hud) {
   this.goLevel = function (k) {
     walker.level = k;
     var lv = P.levels[k];
-    if (k === 0 && lv.entrance) { walker.x = lv.entrance.x; walker.z = 1.0; walker.yaw = Math.PI; }
+    if (k === 0 && lv.entrance) { walker.x = lv.entrance.x; walker.z = 1.2; walker.yaw = Math.PI; }
     else {
-      var hall = lv.rooms.filter(function (r) { return r.isHall; })[0];
+      var hall = lv.rooms.filter(function (r) { return r.group === 'circ' && !r.isStair; })[0] || lv.rooms.filter(function (r) { return r.group === 'social'; })[0] || lv.rooms[0];
       walker.x = (hall.x0 + hall.x1) / 2; walker.z = (hall.y0 + hall.y1) / 2; walker.yaw = 0;
     }
     walker.pitch = -0.05;
@@ -2069,6 +2529,7 @@ function Viewer3D(container, canvas, hud) {
       if (inp.acabado !== 'esencial' && c.esencial <= inp.presupuesto * 1.02) msgs.push('<b>Ajusta acabados.</b> Con acabado Esencial el mismo proyecto queda en ' + mm(c.esencial) + '.');
       if (inp.tipo === 'casa' && inp.recamaras > 1) msgs.push('<b>Reduce el programa.</b> Una recámara menos baja el costo alrededor de ' + mm(13 * project.costM2) + '.');
     }
+    if (project.cramped) msgs.push('<b>El programa queda apretado en este terreno.</b> Prueba con un nivel más o una recámara menos para que cada pieza tenga medidas cómodas.');
     if (project.landLimited) msgs.push('<b>Tu terreno marca el límite.</b> El área se ajustó a lo que cabe con retiros de ' + project.sf + ' m al frente y ' + project.sb + ' m al fondo. Un nivel más aprovecharía mejor tu presupuesto.');
     else if (c.ratio < 0.8) msgs.push('<b>Te sobra margen.</b> Puedes subir acabados o ampliar espacios; lo vemos con el arquitecto.');
     if (project.s < 0.92 && !project.landLimited && c.status !== 'ok') msgs.push('Para este programa las piezas quedan en su tamaño mínimo cómodo.');
@@ -2094,12 +2555,21 @@ function Viewer3D(container, canvas, hud) {
       }
       lv.rooms.forEach(function (r) {
         s += '<rect x="' + r.x0 + '" y="' + Y(r.y1) + '" width="' + r.w + '" height="' + r.h + '" fill="' + (GROUP_FILL[r.group] || '#fff') + '"/>';
-        if (r.isStair) {
-          for (var i = 1; i < 9; i++) {
-            var xs = r.x0 + i * (r.w - 1.0) / 9;
-            s += '<line x1="' + xs + '" y1="' + Y(r.y0 + 0.05) + '" x2="' + xs + '" y2="' + Y(r.y0 + r.h / 2 - 0.05) + '" class="pl-step"/>';
-            s += '<line x1="' + xs + '" y1="' + Y(r.y0 + r.h / 2 + 0.05) + '" x2="' + xs + '" y2="' + Y(r.y1 - 0.05) + '" class="pl-step"/>';
+        if (r.isStair && P.stair) {
+          var st = P.stair, ax = st.open === 'x0' || st.open === 'x1';
+          var len = ax ? st.x1 - st.x0 : st.y1 - st.y0, wid = ax ? st.y1 - st.y0 : st.x1 - st.x0, run = (len - 1.0) / 9;
+          for (var i = 1; i <= 9; i++) {
+            var u = i * run;
+            if (ax) {
+              var xs = st.open === 'x1' ? st.x1 - u : st.x0 + u;
+              s += '<line x1="' + xs + '" y1="' + Y(st.y0 + 0.05) + '" x2="' + xs + '" y2="' + Y(st.y1 - 0.05) + '" class="pl-step"/>';
+            } else {
+              var ys = st.open === 'y0' ? st.y0 + u : st.y1 - u;
+              s += '<line x1="' + (st.x0 + 0.05) + '" y1="' + Y(ys) + '" x2="' + (st.x1 - 0.05) + '" y2="' + Y(ys) + '" class="pl-step"/>';
+            }
           }
+          if (ax) s += '<line x1="' + (st.open === 'x1' ? st.x1 - len + 1 : st.x0 + len - 1) + '" y1="' + Y(st.y0 + wid / 2) + '" x2="' + (st.open === 'x1' ? st.x1 : st.x0) + '" y2="' + Y(st.y0 + wid / 2) + '" class="pl-step"/>';
+          else s += '<line x1="' + (st.x0 + wid / 2) + '" y1="' + Y(st.open === 'y0' ? st.y0 : st.y1) + '" x2="' + (st.x0 + wid / 2) + '" y2="' + Y(st.open === 'y0' ? st.y0 + len - 1 : st.y1 - len + 1) + '" class="pl-step"/>';
         }
       });
       lv.segs.forEach(function (sg) {
@@ -2122,16 +2592,21 @@ function Viewer3D(container, canvas, hud) {
         });
         if (cur < sg.len) line(cur, sg.len, sg.low ? 'pl-wall low' : 'pl-wall');
       });
+      (lv.items || []).forEach(function (it) {
+        if (!it.plan || it.mat === 'light') return;
+        if (it.shape === 'cyl' || it.shape === 'sphere') s += '<circle cx="' + ((it.x0 + it.x1) / 2) + '" cy="' + Y((it.y0 + it.y1) / 2) + '" r="' + (Math.min(it.x1 - it.x0, it.y1 - it.y0) / 2) + '" class="pl-furn"/>';
+        else s += '<rect x="' + it.x0 + '" y="' + Y(it.y1) + '" width="' + (it.x1 - it.x0) + '" height="' + (it.y1 - it.y0) + '" class="pl-furn' + (it.mat === 'rug' ? ' rug' : '') + '"/>';
+      });
       lv.rooms.forEach(function (r) {
         if (r.isStair) return;
         var cx = r.x0 + r.w / 2, cy = Y(r.y0 + r.h / 2);
         var label = r.name;
         if (r.w < 3.2 && label.length > 9) label = label.replace('Baño principal', 'Baño ppal.').replace('Recámara principal', 'Rec. principal').replace('Recámara de visitas', 'Rec. visitas').replace('Medio baño', '½ baño').replace('Baño completo', 'Baño').replace('Lavandería', 'Lavand.').replace('Estar familiar', 'Estar').replace('Recepción y espera', 'Recepción');
         var fs = clamp(Math.min(0.34, (r.w - 0.3) / (label.length * 0.62)), 0.13, 0.34);
-        s += '<text x="' + cx + '" y="' + (cy - 0.05) + '" class="pl-name" style="font-size:' + fs + 'px" text-anchor="middle">' + label + '</text>';
+        s += '<text x="' + cx + '" y="' + (cy - 0.05) + '" class="pl-name" style="font-size:' + fs + 'px;paint-order:stroke;stroke:#fff;stroke-width:' + (fs * 0.35) + 'px" text-anchor="middle">' + label + '</text>';
         if (!r.isHall) s += '<text x="' + cx + '" y="' + (cy + fs + 0.1) + '" class="pl-area" style="font-size:' + (fs * 0.85) + 'px" text-anchor="middle">' + num1.format(r.area) + ' m²</text>';
       });
-      if (k === 0 && lv.entrance) s += '<path d="M' + lv.entrance.x + ' ' + (Y(0) + 0.9) + ' l0 -0.7 m-0.22 0.25 l0.22 -0.25 l0.22 0.25" class="pl-arrow"/>';
+      if (k === 0) (lv.entrances || []).forEach(function (en) { s += '<path d="M' + en.x + ' ' + (Y(0) + 0.9) + ' l0 -0.7 m-0.22 0.25 l0.22 -0.25 l0.22 0.25" class="pl-arrow"/>'; });
       s += '<line x1="0" y1="' + (Y(0) + 0.45) + '" x2="' + P.W + '" y2="' + (Y(0) + 0.45) + '" class="pl-dim"/>';
       s += '<text x="' + (P.W / 2) + '" y="' + (Y(0) + 0.38) + '" class="pl-small" text-anchor="middle">' + num1.format(P.W) + ' m</text>';
       s += '</svg>';
