@@ -1674,24 +1674,46 @@ function Viewer3D(container, canvas, hud) {
   renderer.shadowMap.type = T.PCFSoftShadowMap;
   renderer.outputEncoding = T.sRGBEncoding;
   renderer.toneMapping = T.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 0.92;
 
   var scene = new T.Scene();
-  scene.background = new T.Color(0xdde3e6);
-  scene.fog = new T.Fog(0xdde3e6, 60, 160);
+  scene.background = new T.Color(0xcfd9e2);
+  scene.fog = new T.Fog(0xdfe4e6, 70, 260);
+  /* cielo degradado: se ve de fondo y alimenta los reflejos (iluminación ambiental) */
+  function skyMesh(radius, withSun) {
+    var geo = new T.SphereGeometry(radius, 48, 24), pos = geo.attributes.position, cols = [];
+    var zen = new T.Color(0x6f9fd0).convertSRGBToLinear(), hor = new T.Color(0xe9eef0).convertSRGBToLinear(), gnd = new T.Color(0x8b8574).convertSRGBToLinear(), c = new T.Color();
+    for (var i = 0; i < pos.count; i++) {
+      var yy = pos.getY(i) / radius;
+      if (yy >= 0) c.copy(hor).lerp(zen, Math.pow(yy, 0.55)); else c.copy(hor).lerp(gnd, Math.min(1, -yy * 4));
+      cols.push(c.r, c.g, c.b);
+    }
+    geo.setAttribute('color', new T.Float32BufferAttribute(cols, 3));
+    var g = new T.Group();
+    g.add(new T.Mesh(geo, new T.MeshBasicMaterial({ vertexColors: true, side: T.BackSide, fog: false, depthWrite: false })));
+    if (withSun) { var sm = new T.Mesh(new T.SphereGeometry(radius * 0.06, 16, 8), new T.MeshBasicMaterial({ color: 0xfff1d0, fog: false })); sm.position.set(radius * 0.45, radius * 0.55, -radius * 0.6); g.add(sm); }
+    return g;
+  }
+  try {
+    var pmrem = new T.PMREMGenerator(renderer), envScene = new T.Scene();
+    envScene.add(skyMesh(100, true));
+    scene.environment = pmrem.fromScene(envScene, 0.03).texture;
+  } catch (e) {}
+  var skyDome = skyMesh(600, false); skyDome.renderOrder = -1; scene.add(skyDome);
   var camera = new T.PerspectiveCamera(40, 1, 0.05, 400);
   camera.rotation.order = 'YXZ';
   var rig = new T.Group();   // soporte de la cámara: se mueve en VR y en visor de cartón
   scene.add(rig); rig.add(camera);
+  var headLight = new T.PointLight(0xffe3bd, 0, 7, 2); camera.add(headLight);   // luz cálida que acompaña al recorrido interior
 
-  var hemi = new T.HemisphereLight(0xffffff, 0x8d877b, 0.62);
+  var hemi = new T.HemisphereLight(0xeef3ff, 0x8d877b, 0.32);
   scene.add(hemi);
-  var amb = new T.AmbientLight(0xffffff, 0.12);
+  var amb = new T.AmbientLight(0xffffff, 0.04);
   scene.add(amb);
-  var sun = new T.DirectionalLight(0xfff3e0, 1.05);
+  var sun = new T.DirectionalLight(0xffe6c4, 2.1);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.bias = -0.0006;
+  sun.shadow.bias = -0.0004; sun.shadow.radius = 3;
   sun.shadow.normalBias = 0.02;
   scene.add(sun);
   scene.add(sun.target);
@@ -1749,53 +1771,98 @@ function Viewer3D(container, canvas, hud) {
       g.strokeStyle = 'rgba(90,85,80,0.4)'; g.lineWidth = 3;
       for (var i = 0; i <= 2; i++) { g.beginPath(); g.moveTo(0, i * s / 2); g.lineTo(s, i * s / 2); g.stroke(); }
     }),
-    asphalt: canvasTex(256, function (g, s) { g.fillStyle = '#4a4c4f'; g.fillRect(0, 0, s, s); noise(g, s, 22); })
+    asphalt: canvasTex(256, function (g, s) { g.fillStyle = '#4a4c4f'; g.fillRect(0, 0, s, s); noise(g, s, 22); }),
+    pavDark: canvasTex(512, function (g, s) {
+      g.fillStyle = '#3f4246'; g.fillRect(0, 0, s, s); noise(g, s, 18);
+      g.strokeStyle = 'rgba(20,20,22,0.7)'; g.lineWidth = 3;
+      for (var i = 0; i <= 2; i++) { g.beginPath(); g.moveTo(i * s / 2, 0); g.lineTo(i * s / 2, s); g.stroke(); g.beginPath(); g.moveTo(0, i * s / 2); g.lineTo(s, i * s / 2); g.stroke(); }
+    }),
+    stucco: canvasTex(256, function (g, s) { g.fillStyle = '#efece6'; g.fillRect(0, 0, s, s); noise(g, s, 9); }),
+    plaster: canvasTex(256, function (g, s) { g.fillStyle = '#f3f1ec'; g.fillRect(0, 0, s, s); noise(g, s, 5); }),
+    concrete: canvasTex(512, function (g, s) {
+      g.fillStyle = '#a7a5a0'; g.fillRect(0, 0, s, s); noise(g, s, 30);
+      for (var k = 0; k < 140; k++) { g.fillStyle = 'rgba(' + (Math.random() > 0.5 ? '255,255,255' : '40,40,40') + ',' + (Math.random() * 0.06) + ')'; var r = 10 + Math.random() * 60; g.beginPath(); g.arc(Math.random() * s, Math.random() * s, r, 0, 7); g.fill(); }
+      g.strokeStyle = 'rgba(60,60,60,0.25)'; g.lineWidth = 2;
+      for (var j = 1; j < 4; j++) { g.beginPath(); g.moveTo(0, j * s / 4); g.lineTo(s, j * s / 4); g.stroke(); }
+      for (var t2 = 0; t2 < 12; t2++) { g.fillStyle = 'rgba(70,70,70,0.35)'; g.beginPath(); g.arc((t2 % 4 + 0.5) * s / 4, (Math.floor(t2 / 4) + 0.5) * s / 3, 3, 0, 7); g.fill(); }
+    }),
+    fluted: canvasTex(256, function (g, s) {
+      for (var x = 0; x < s; x += 16) { var gr = g.createLinearGradient(x, 0, x + 16, 0); gr.addColorStop(0, '#5f6266'); gr.addColorStop(0.5, '#8c8f93'); gr.addColorStop(1, '#55585c'); g.fillStyle = gr; g.fillRect(x, 0, 16, s); }
+      noise(g, s, 10);
+    }),
+    woodV: canvasTex(512, function (g, s) {
+      var n = 10, w = s / n;
+      for (var i = 0; i < n; i++) { var t3 = 120 + Math.random() * 30; g.fillStyle = 'rgb(' + (t3 + 30) + ',' + (t3 - 5) + ',' + (t3 - 45) + ')'; g.fillRect(i * w, 0, w - 3, s);
+        g.strokeStyle = 'rgba(70,45,25,0.25)'; for (var l = 0; l < 6; l++) { g.beginPath(); var xx = i * w + Math.random() * w; g.moveTo(xx, 0); g.bezierCurveTo(xx + 6, s * 0.3, xx - 6, s * 0.6, xx + 3, s); g.stroke(); } }
+      noise(g, s, 12);
+    }),
+    marble: canvasTex(512, function (g, s) {
+      g.fillStyle = '#1d1e20'; g.fillRect(0, 0, s, s); noise(g, s, 12);
+      for (var v = 0; v < 18; v++) { g.strokeStyle = 'rgba(230,230,230,' + (0.15 + Math.random() * 0.4) + ')'; g.lineWidth = Math.random() * 2 + 0.5; g.beginPath(); var x0 = Math.random() * s; g.moveTo(x0, 0); for (var q = 1; q <= 8; q++) g.lineTo(x0 + (Math.random() - 0.5) * 120, q * s / 8); g.stroke(); }
+    }),
+    fabric: canvasTex(256, function (g, s) { g.fillStyle = '#c9c4bb'; g.fillRect(0, 0, s, s); noise(g, s, 16); })
   };
-  var TILE = { wood: 1.8, porc: 1.2, tile: 0.8, deck: 1.4, conc: 2.5, grass: 5, paving: 1.2, asphalt: 6 };
+  var TILE = { wood: 1.8, porc: 1.2, tile: 0.8, deck: 1.4, conc: 2.5, grass: 5, paving: 1.2, asphalt: 6, pavDark: 1.6, stucco: 2, plaster: 2, concrete: 2.4, fluted: 1.2, woodV: 1.6, marble: 1.2, fabric: 0.8 };
+  function texMat(key, opts) { var m = new T.MeshStandardMaterial(Object.assign({ map: TEX[key] }, opts || {})); m.userData.tile = TILE[key]; return m; }
   var floorMats = {};
   Object.keys(TEX).forEach(function (k) { floorMats[k] = new T.MeshStandardMaterial({ map: TEX[k], roughness: k === 'porc' || k === 'tile' ? 0.45 : 0.85 }); });
 
   var M = {
-    wall: new T.MeshStandardMaterial({ color: 0xf1efea, roughness: 0.92 }),
+    wall: texMat('plaster', { roughness: 0.9 }),
+    stucco: texMat('stucco', { roughness: 0.95 }),
+    concrete: texMat('concrete', { roughness: 0.92 }),
+    fluted: texMat('fluted', { roughness: 0.8 }),
+    cladding: texMat('woodV', { roughness: 0.7 }),
+    marble: texMat('marble', { roughness: 0.18 }),
+    hedge: new T.MeshStandardMaterial({ color: 0x4f6b3a, roughness: 0.95, flatShading: true }),
+    sconce: new T.MeshStandardMaterial({ color: 0x2a2a2a, emissive: 0xffc98a, emissiveIntensity: 1.2 }),
     slab: new T.MeshStandardMaterial({ color: 0xecebe7, roughness: 0.95 }),
     accent: new T.MeshStandardMaterial({ color: 0x2b2d30, roughness: 0.7 }),
-    woodSlat: new T.MeshStandardMaterial({ color: 0x9a6b42, roughness: 0.7 }),
-    glass: new T.MeshStandardMaterial({ color: 0x8fb1c2, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.32, depthWrite: false }),
-    frame: new T.MeshStandardMaterial({ color: 0x3a3c3f, roughness: 0.5, metalness: 0.4 }),
-    door: new T.MeshStandardMaterial({ color: 0x7a5435, roughness: 0.6 }),
-    fabric: new T.MeshStandardMaterial({ color: 0xb8b1a5, roughness: 0.95 }),
+    woodSlat: texMat('woodV', { roughness: 0.65 }),
+    glass: new T.MeshStandardMaterial({ color: 0x9fb9c6, roughness: 0.02, metalness: 0.15, transparent: true, opacity: 0.24, depthWrite: false, envMapIntensity: 1.6 }),
+    frame: new T.MeshStandardMaterial({ color: 0x232527, roughness: 0.4, metalness: 0.6 }),
+    door: texMat('woodV', { roughness: 0.55 }),
+    fabric: texMat('fabric', { roughness: 0.97 }),
     fabric2: new T.MeshStandardMaterial({ color: 0x5f6f73, roughness: 0.95 }),
-    white: new T.MeshStandardMaterial({ color: 0xf6f6f4, roughness: 0.4 }),
+    white: new T.MeshStandardMaterial({ color: 0xf4f3f0, roughness: 0.35 }),
     dark: new T.MeshStandardMaterial({ color: 0x2f3134, roughness: 0.6 }),
-    furnWood: new T.MeshStandardMaterial({ color: 0xa47b52, roughness: 0.7 }),
+    furnWood: texMat('wood', { roughness: 0.6 }),
     rug: new T.MeshStandardMaterial({ color: 0xcfc6b6, roughness: 1 }),
-    barda: new T.MeshStandardMaterial({ color: 0xc8c4bc, roughness: 0.95 }),
+    barda: texMat('fluted', { roughness: 0.85 }),
     trunk: new T.MeshStandardMaterial({ color: 0x6b5340, roughness: 0.9 }),
-    leaf: new T.MeshStandardMaterial({ color: 0x5d7a45, roughness: 0.9, flatShading: true }),
-    leaf2: new T.MeshStandardMaterial({ color: 0x7a9455, roughness: 0.9, flatShading: true }),
-    stair: new T.MeshStandardMaterial({ color: 0xd8d3ca, roughness: 0.6 }),
+    leaf: new T.MeshStandardMaterial({ color: 0x4e6e3a, roughness: 0.9, flatShading: true }),
+    leaf2: new T.MeshStandardMaterial({ color: 0x6f8b48, roughness: 0.9, flatShading: true }),
+    stair: texMat('wood', { roughness: 0.55 }),
     duvet: new T.MeshStandardMaterial({ color: 0xcfc3b0, roughness: 0.95 }),
     screen: new T.MeshStandardMaterial({ color: 0x0d0e10, roughness: 0.25, metalness: 0.3 }),
     pot: new T.MeshStandardMaterial({ color: 0xb9a48a, roughness: 0.9 }),
     light: new T.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff4dc, emissiveIntensity: 0.9 }),
     lamp: new T.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.5, emissive: 0x332a1a, emissiveIntensity: 0.4 }),
-    closet: new T.MeshStandardMaterial({ color: 0xbfa27e, roughness: 0.7 }),
+    closet: texMat('woodV', { roughness: 0.6 }),
     cabinet: new T.MeshStandardMaterial({ color: 0xe9e5dc, roughness: 0.6 }),
-    counter: new T.MeshStandardMaterial({ color: 0x3b3a38, roughness: 0.35 }),
+    counter: texMat('marble', { roughness: 0.15 }),
     steel: new T.MeshStandardMaterial({ color: 0xb8bcbf, roughness: 0.35, metalness: 0.6 }),
     mirror: new T.MeshStandardMaterial({ color: 0xcfd9de, roughness: 0.05, metalness: 0.8 }),
-    shelf: new T.MeshStandardMaterial({ color: 0xa47b52, roughness: 0.7 }),
-    doorLight: new T.MeshStandardMaterial({ color: 0xc8b291, roughness: 0.65 }),
-    car: new T.MeshStandardMaterial({ color: 0x7d8790, roughness: 0.3, metalness: 0.5 }),
-    tire: new T.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 0.9 })
+    shelf: texMat('wood', { roughness: 0.6 }),
+    doorLight: texMat('woodV', { roughness: 0.6, color: 0xe8dccb })
   };
 
   var world = new T.Group(); scene.add(world);
   var levelGroups = [], roofGroup = null, colliders = [], P = null;
 
+  function boxUV(geo, w, h, d, tile) {
+    var uv = geo.attributes.uv, dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
+    for (var f = 0; f < 6; f++) for (var v = 0; v < 4; v++) { var i = f * 4 + v; uv.setXY(i, uv.getX(i) * dims[f][0] / tile, uv.getY(i) * dims[f][1] / tile); }
+  }
+  function mkBox(w, h, d, mat) {
+    var geo = new T.BoxGeometry(w, h, d);
+    var tile = Array.isArray(mat) ? 2 : (mat.userData && mat.userData.tile);
+    if (tile) boxUV(geo, w, h, d, tile);
+    return new T.Mesh(geo, mat);
+  }
   function addBox(parent, w, h, d, mat, x, y, z, noShadow) {
     if (w <= 0.001 || h <= 0.001 || d <= 0.001) return null;
-    var m = new T.Mesh(new T.BoxGeometry(w, h, d), mat);
+    var m = mkBox(w, h, d, mat);
     m.position.set(x, y, z);
     if (!noShadow) { m.castShadow = true; m.receiveShadow = true; }
     parent.add(m);
@@ -1831,7 +1898,7 @@ function Viewer3D(container, canvas, hud) {
       var mat = M[it.mat] || M.white, m;
       if (it.shape === 'cyl') m = new T.Mesh(new T.CylinderGeometry(Math.min(w, d) / 2, Math.min(w, d) / 2 * 0.85, h, 18), mat);
       else if (it.shape === 'sphere') m = new T.Mesh(new T.IcosahedronGeometry(Math.min(w, d) * 0.62, 1), mat);
-      else m = new T.Mesh(new T.BoxGeometry(w, h, d), mat);
+      else m = mkBox(w, h, d, mat);
       m.position.set((it.x0 + it.x1) / 2, y + it.b + h / 2, (it.y0 + it.y1) / 2);
       if (it.mat !== 'light' && it.mat !== 'glass' && it.mat !== 'rug') { m.castShadow = true; m.receiveShadow = true; }
       g.add(m);
@@ -1882,27 +1949,43 @@ function Viewer3D(container, canvas, hud) {
     addFloor(site, -40, -sf - 40, F + 40, D - sf + 40, -0.06, 'grass');
     addFloor(site, -40, -sf - 9, F + 40, -sf - 2.2, -0.04, 'asphalt');
     addFloor(site, -40, -sf - 2.2, F + 40, -sf, -0.03, 'paving');
-    addFloor(site, 0, -sf, Math.min(F, W), 0, -0.02, 'paving');
-    addBox(site, 0.15, 1.9, D, M.barda, -0.25, 0.95, -sf + D / 2);
-    addBox(site, 0.15, 1.9, D, M.barda, F + 0.08, 0.95, -sf + D / 2);
-    addBox(site, F + 0.5, 1.9, 0.15, M.barda, F / 2, 0.95, D - sf + 0.08);
+    addFloor(site, 0, -sf, F, 0, -0.02, 'pavDark');
+    addBox(site, 0.18, 2.2, D, M.barda, -0.25, 1.1, -sf + D / 2);
+    addBox(site, 0.18, 2.2, D, M.barda, F + 0.08, 1.1, -sf + D / 2);
+    addBox(site, F + 0.5, 2.2, 0.18, M.barda, F / 2, 1.1, D - sf + 0.08);
     var backFree = D - sf - L;
-    if (backFree > 2.5) {
-      var tree = function (x, z, s) {
-        var tr = new T.Mesh(new T.CylinderGeometry(0.08 * s, 0.12 * s, 2.2 * s, 6), M.trunk); tr.position.set(x, 1.1 * s, z); tr.castShadow = true; site.add(tr);
-        var lf = new T.Mesh(new T.IcosahedronGeometry(1.2 * s, 1), Math.random() > 0.5 ? M.leaf : M.leaf2); lf.position.set(x, 2.6 * s, z); lf.castShadow = true; site.add(lf);
-      };
-      tree(Math.min(F - 1.2, W * 0.75), L + backFree * 0.55, 1);
-      if (F > 8) tree(1.4, L + backFree * 0.6, 0.8);
+    function bush(x, z, s2, y0) {
+      var m = new T.Mesh(new T.IcosahedronGeometry(0.45 * s2, 1), Math.random() > 0.5 ? M.leaf : M.hedge);
+      m.position.set(x, (y0 || 0) + 0.35 * s2, z); m.scale.y = 0.8; m.castShadow = true; site.add(m);
     }
+    function tree(x, z, s2) {
+      var tr = new T.Mesh(new T.CylinderGeometry(0.07 * s2, 0.12 * s2, 2.6 * s2, 7), M.trunk); tr.position.set(x, 1.3 * s2, z); tr.castShadow = true; site.add(tr);
+      for (var i = 0; i < 6; i++) {
+        var r = (0.7 + Math.random() * 0.6) * s2;
+        var lf = new T.Mesh(new T.IcosahedronGeometry(r, 1), i % 2 ? M.leaf : M.leaf2);
+        lf.position.set(x + (Math.random() - 0.5) * 1.6 * s2, (2.6 + Math.random() * 1.4) * s2, z + (Math.random() - 0.5) * 1.6 * s2);
+        lf.castShadow = true; site.add(lf);
+      }
+    }
+    if (backFree > 2.5) {
+      addFloor(site, 0, L, Math.min(F, W), L + Math.min(2.2, backFree - 0.5), -0.015, 'pavDark');
+      tree(Math.min(F - 1.4, W * 0.72), L + backFree * 0.62, 1);
+      if (F > 8) tree(1.5, L + backFree * 0.7, 0.8);
+      for (var bx = 0.6; bx < F - 0.4; bx += 0.9) bush(bx, D - sf - 0.55, 1 + Math.random() * 0.4);
+    }
+    for (var bz = -sf + 0.5; bz < -0.3; bz += 0.8) { bush(0.35, bz, 0.9); bush(F - 0.35, bz, 0.9); }
+    if (D - sf - L > 1) addBox(site, 0.08, 1.8, Math.min(4, D - sf - L - 0.4), M.hedge, F - 0.05, 1.0, L + (D - sf - L) / 2);
     if (F - W > 2) addFloor(site, W, 0, F, Math.min(L, D - sf), -0.02, 'grass');
-    if (inp.tipo === 'casa' && sf >= 2.6 && W >= 6.4) {
-      var ent = P.levels[0].entrance, cxCar = ent && ent.x < W / 2 ? W - 2.5 : 2.5, cz = -sf / 2 - 0.1;
-      addBox(site, 4.3, 0.62, 1.8, M.car, cxCar, 0.55, cz);
-      addBox(site, 2.3, 0.5, 1.62, M.screen, cxCar - 0.2, 1.1, cz);
-      [[-1.4, -0.82], [1.4, -0.82], [-1.4, 0.82], [1.4, 0.82]].forEach(function (o) {
-        var wh = new T.Mesh(new T.CylinderGeometry(0.33, 0.33, 0.22, 16), M.tire); wh.rotation.x = Math.PI / 2; wh.position.set(cxCar + o[0], 0.33, cz + o[1]); wh.castShadow = true; site.add(wh);
-      });
+    (P.levels[0].entrances || []).forEach(function (en) {
+      [-0.85, 0.85].forEach(function (o) { addBox(site, 0.12, 0.3, 0.1, M.sconce, en.x + o, 1.9, -0.13, true); });
+    });
+
+    // acabado de fachada según el nivel de acabados
+    function facadeMat(side, k) {
+      if (side === 'left' || side === 'right') return acab === 'premium' ? M.concrete : M.stucco;
+      if (acab === 'premium') return (side === 'front' && k === 0) ? M.concrete : M.stucco;
+      if (acab === 'confort') return (side === 'front' && k === P.N - 1 && P.N > 1) ? M.cladding : M.stucco;
+      return M.stucco;
     }
 
     /* niveles */
@@ -1941,8 +2024,14 @@ function Viewer3D(container, canvas, hud) {
         wallPieces(s, WH).forEach(function (p) {
           var a0 = s.s0 + p.t0 - (p.t0 < 0.01 ? ext : 0), a1 = s.s0 + p.t1 + (p.t1 > s.len - 0.01 ? ext : 0);
           var len = a1 - a0, h = p.h - p.b, cy = y + p.b + h / 2, mid = (a0 + a1) / 2;
-          if (s.axis === 'h') addBox(g, len, h, t, M.wall, mid, cy, s.c);
-          else addBox(g, t, h, len, M.wall, s.c, cy, mid);
+          var wm = M.wall;
+          if (s.ext && s.side) {
+            var fac = facadeMat(s.side, k), arr = [M.wall, M.wall, M.wall, M.wall, M.wall, M.wall];
+            arr[{ front: 5, back: 4, left: 1, right: 0 }[s.side]] = fac;
+            wm = arr;
+          }
+          if (s.axis === 'h') addBox(g, len, h, t, wm, mid, cy, s.c);
+          else addBox(g, t, h, len, wm, s.c, cy, mid);
           if (p.b < 0.5) {
             if (s.axis === 'h') col.push({ x0: a0, x1: a1, z0: s.c - t / 2, z1: s.c + t / 2 });
             else col.push({ x0: s.c - t / 2, x1: s.c + t / 2, z0: a0, z1: a1 });
@@ -2006,10 +2095,10 @@ function Viewer3D(container, canvas, hud) {
     });
     roofRects.forEach(function (r) { addBox(roofGroup, r.x1 - r.x0, 0.2, r.y1 - r.y0, M.slab, (r.x0 + r.x1) / 2, top - 0.1, (r.y0 + r.y1) / 2); });
     var par = 0.6, pt = 0.15;
-    addBox(roofGroup, W + pt, par, pt, M.wall, W / 2, top + par / 2, 0);
-    addBox(roofGroup, W + pt, par, pt, M.wall, W / 2, top + par / 2, L);
-    addBox(roofGroup, pt, par, L, M.wall, 0, top + par / 2, L / 2);
-    addBox(roofGroup, pt, par, L, M.wall, W, top + par / 2, L / 2);
+    addBox(roofGroup, W + pt, par, pt, M.stucco, W / 2, top + par / 2, 0);
+    addBox(roofGroup, W + pt, par, pt, M.stucco, W / 2, top + par / 2, L);
+    addBox(roofGroup, pt, par, L, M.stucco, 0, top + par / 2, L / 2);
+    addBox(roofGroup, pt, par, L, M.stucco, W, top + par / 2, L / 2);
     if (inp.tipo === 'casa') {
       var tk = new T.Mesh(new T.CylinderGeometry(0.55, 0.55, 1.25, 20), M.dark); tk.position.set(0.9, top + 0.25 + 0.62, L - 0.9); tk.castShadow = true; roofGroup.add(tk);
       addBox(roofGroup, 1.4, 0.25, 1.4, M.slab, 0.9, top + 0.12, L - 0.9);
@@ -2049,10 +2138,10 @@ function Viewer3D(container, canvas, hud) {
     levelGroups.forEach(function (g, k) { g.visible = mode !== 'maqueta' || k <= self.cutLevel; });
     if (roofGroup) roofGroup.visible = mode !== 'maqueta';
     if (mode === 'walk') {
-      camera.fov = 72; amb.intensity = 0.42; hemi.intensity = 0.7;
+      camera.fov = 72; amb.intensity = 0.12; hemi.intensity = 0.5; headLight.intensity = 0.9;
       self.goLevel(level == null ? 0 : level);
     } else {
-      camera.fov = 40; amb.intensity = 0.12; hemi.intensity = 0.62;
+      camera.fov = 40; amb.intensity = 0.04; hemi.intensity = 0.32; headLight.intensity = 0;
     }
     camera.updateProjectionMatrix();
     self.dirty = true;
@@ -2203,7 +2292,7 @@ function Viewer3D(container, canvas, hud) {
     cb.has = false; cb.yawOff = null;
     window.addEventListener('deviceorientation', onOrient);
     levelGroups.forEach(function (g) { g.visible = true; }); if (roofGroup) roofGroup.visible = true;
-    amb.intensity = 0.42; hemi.intensity = 0.7; camera.fov = 80;
+    amb.intensity = 0.12; hemi.intensity = 0.5; headLight.intensity = 0.9; camera.fov = 80;
     buildTour(); goTour(0);
     container.classList.add('vr-on');
     resize();
@@ -2244,8 +2333,10 @@ function Viewer3D(container, canvas, hud) {
 
   /* ---- lentes de realidad virtual (WebXR: Meta Quest y similares) ---- */
   this.xrSupported = function () {
-    if (!navigator.xr || !navigator.xr.isSessionSupported) return Promise.resolve(false);
-    return navigator.xr.isSessionSupported('immersive-vr').catch(function () { return false; });
+    try {
+      if (!navigator.xr || !navigator.xr.isSessionSupported) return Promise.resolve(false);
+      return navigator.xr.isSessionSupported('immersive-vr').catch(function () { return false; });
+    } catch (e) { return Promise.resolve(false); }
   };
   this.enterXR = function () {
     if (!P) return Promise.reject(new Error('sin proyecto'));
@@ -2255,7 +2346,7 @@ function Viewer3D(container, canvas, hud) {
       return renderer.xr.setSession(session).then(function () {
         self.prevMode = self.mode; self.mode = 'xr';
         levelGroups.forEach(function (g) { g.visible = true; }); if (roofGroup) roofGroup.visible = true;
-        amb.intensity = 0.42; hemi.intensity = 0.7;
+        amb.intensity = 0.12; hemi.intensity = 0.5; headLight.intensity = 0.9;
         camera.position.set(0, 0, 0); camera.rotation.set(0, 0, 0);
         buildTour(); goTour(0);
         var ctrls = [renderer.xr.getController(0), renderer.xr.getController(1)];
@@ -2292,7 +2383,7 @@ function Viewer3D(container, canvas, hud) {
         base = new T.Mesh(new T.BoxGeometry(F, 0.12, D), new T.MeshStandardMaterial({ color: 0x9fb07f, roughness: 1 }));
         base.position.set(F / 2, -0.08, -P.sf + D / 2);
         holder.add(base);
-        holder.scale.setScalar(1 / 50);
+        holder.scale.setScalar(1 / 20);   // maqueta 1:20: una casa de 10 m mide 50 cm
       }
       holder.rotation.y = Math.PI;     // la fachada mira hacia quien sostiene el teléfono
       var restore = function () {
@@ -2710,6 +2801,9 @@ function Viewer3D(container, canvas, hud) {
     });
   }
   var arCache = { key: null, real: null, mesa: null }, arMode = 'real', mv = null;
+  // dentro de una vista previa (iframe) el navegador bloquea la cámara y los lentes
+  var inFrame = (function () { try { return window.self !== window.top; } catch (e) { return true; } })();
+  var FRAME_MSG = 'Esta vista previa bloquea la cámara. Abre la página directamente en el navegador de tu celular para verla en tu terreno.';
   function ensureExporter() {
     return (window.THREE && THREE.GLTFExporter) ? Promise.resolve() : loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js');
   }
@@ -2735,7 +2829,7 @@ function Viewer3D(container, canvas, hud) {
     $$('input[name=armode]').forEach(function (r) { r.checked = r.value === m; });
     $('#ar-help').textContent = m === 'real'
       ? 'Párate al centro de tu terreno, apunta el teléfono al piso y toca la pantalla cuando aparezca la marca. La casa aparece a tamaño real.'
-      : 'Apunta el teléfono a una mesa o al piso y toca para colocar la maqueta. Puedes girarla y acercarte.';
+      : 'Apunta el teléfono a una mesa o al piso y toca para colocar la maqueta (escala 1:20). Con dos dedos la haces más grande o más chica.';
     if (!arCache[m]) return;
     if (!mv) {
       mv = document.createElement('model-viewer');
@@ -2746,9 +2840,9 @@ function Viewer3D(container, canvas, hud) {
       mv.setAttribute('alt', 'Prototipo de tu casa');
       mv.setAttribute('camera-orbit', '200deg 72deg auto');
       mv.addEventListener('load', function () {
-        var can = mv.canActivateAR;
+        var can = mv.canActivateAR && !inFrame;
         $('#ar-go').disabled = !can;
-        arStatus(can ? 'Listo. Toca «Abrir la cámara».' : 'Para verla con la cámara abre esta página en tu celular: Chrome en Android o Safari en iPhone.');
+        arStatus(inFrame ? FRAME_MSG : can ? 'Listo. Toca «Abrir la cámara».' : 'Para verla con la cámara abre esta página en tu celular: Chrome en Android o Safari en iPhone.');
       });
       mv.addEventListener('ar-status', function (e) { if (e.detail && e.detail.status === 'failed') arStatus('La cámara no pudo iniciar la realidad aumentada en este teléfono.'); });
       $('#ar-stage').appendChild(mv);
@@ -2800,6 +2894,7 @@ function Viewer3D(container, canvas, hud) {
     $('#v-vr').addEventListener('click', function () {
       if (!viewer || !viewer.ok) return;
       track('vr_abrir', {});
+      if (inFrame) { var vm = $('#viewer-msg'); vm.hidden = false; vm.textContent = 'Esta vista previa bloquea los sensores y los lentes. Abre la página directamente en tu celular o en el navegador de tus lentes.'; setTimeout(function () { vm.hidden = true; }, 6000); return; }
       // el permiso del giroscopio en iPhone debe pedirse dentro del toque
       var perm = (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function')
         ? DeviceOrientationEvent.requestPermission().catch(function () { return 'denied'; }) : Promise.resolve('granted');
