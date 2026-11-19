@@ -1395,6 +1395,8 @@ if (typeof module !== 'undefined') module.exports = { CONFIG: CONFIG, program: p
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { if (dx < 0) next('deslizar'); else prev('deslizar'); }
   });
 
+  // en celular, al generar el prototipo se pasa sola a la hoja de resultados
+  window.addEventListener('prototipo-generado', function () { if (single && order[ci] === 'cfgL') next('prototipo'); });
   var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(layout, 80); });
   single = !(window.innerWidth < 860);   // fuerza la primera colocación
   layout();
@@ -1959,6 +1961,7 @@ function Viewer3D(container, canvas, hud) {
   }
 
   var form = $('#cfg');
+  var trackT = null;
   var viewer = null, project = null, generated = false, touched = {};
   var FIELDS = ['tipo', 'terreno-medidas', 'terreno', 'niveles', 'programa', 'acabado', 'presupuesto', 'inicio'];
 
@@ -1991,8 +1994,12 @@ function Viewer3D(container, canvas, hud) {
     var f = e.target.closest('[data-field]');
     if (f && !touched[f.dataset.field]) { touched[f.dataset.field] = 1; track('configurador_campo', { campo: f.dataset.field, n: Object.keys(touched).length }); }
     syncForm();
-    if (generated) { $('#gen-btn').textContent = 'Actualizar mi prototipo'; $('#res-state').textContent = 'Cambiaste datos: actualiza para verlos'; $('#res-state').className = 'pill pill-warn'; }
+    // el prototipo se actualiza solo mientras el cliente mueve los datos
+    $('#res-state').textContent = 'Actualizando…'; $('#res-state').className = 'pill pill-warn';
+    clearTimeout(liveT);
+    liveT = setTimeout(function () { render(readInp(), 'live'); }, 350);
   });
+  var liveT = null;
 
   /* ---- generación con trabajo visible ---- */
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -2019,12 +2026,14 @@ function Viewer3D(container, canvas, hud) {
   });
 
   function render(inp, byUser) {
+    var live = byUser === 'live';
     project = buildProject(inp);
-    generated = generated || byUser;
+    generated = generated || !!byUser;
     var c = project.cost, q = project.quant;
     $('#gen-btn').textContent = 'Generar mi prototipo';
     $('#res-state').textContent = byUser ? 'Tu prototipo' : 'Prototipo de ejemplo';
     $('#res-state').className = byUser ? 'pill pill-ok' : 'pill';
+    if (live) { clearTimeout(trackT); trackT = setTimeout(function () { track('configurador_actualizado', { m2: Math.round(project.quant.builtArea), estado: project.cost.status }); }, 1500); }
     $('#k-area').textContent = num0.format(q.builtArea);
     $('#k-costo').textContent = mm(c.total);
     $('#k-niveles').textContent = project.N + (project.N === 1 ? ' nivel' : ' niveles');
@@ -2044,7 +2053,8 @@ function Viewer3D(container, canvas, hud) {
       try { viewer.build(project); } catch (err) { showViewerError(err); }
       updateLevelChips();
     }
-    if (byUser) {
+    if (byUser && !live) {
+      try { window.dispatchEvent(new CustomEvent('prototipo-generado')); } catch (e) {}
       track('configurador_resultado', { estado: c.status, m2: Math.round(q.builtArea), score: leadScore(inp) });
       var scr = $('#resultado').closest('.pg-scroll');
       if (scr) scr.scrollTop = 0;
