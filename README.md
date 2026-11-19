@@ -3,179 +3,144 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Liberache Versión Revista</title>
-<meta name="description" content="Revista de Estudio Liberache: recorridos virtuales, prototipo de tu casa con planos, materiales y presupuesto. Tepic y Xalisco.">
+<title>Revista Liberache</title>
+<meta name="description" content="Estudio Liberache: recorridos virtuales de proyectos y prototipo de tu casa o negocio con planos, materiales y presupuesto. Tepic y Xalisco.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Jost:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-/* Una revista física sobre la mesa: portada, pliegos a dos hojas, didona y filetes finos, rojo de cabecera. */
+/* Revista de interiorismo: papel blanco, tinta negra, rojo de cabecera. Spreads a dos páginas, filetes finos, didona enorme. */
 :root{
-  --table:#D7D3CC; --paper:#FBFAF8; --white:#FFFFFF; --ink:#111111; --muted:#6C6964; --rule:#DAD7D1;
+  --paper:#FBFAF8; --white:#FFFFFF; --ink:#111111; --muted:#6C6964; --rule:#DAD7D1;
   --red:#9E1B1E; --blush:#F1E7E1; --plan:#2B4C9B; --night:#0F0F10;
   --ok:#2E7A4E; --warn:#A8701B; --bad:#AF3A3A;
   --didone:'Bodoni Moda','Didot','Bodoni 72',Georgia,serif;
   --sans:'Jost','Futura','Avenir Next',system-ui,sans-serif;
   --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
-  --pw:480px; --ph:650px;
+  --gut:clamp(16px,4vw,56px); --max:1320px;
   color-scheme: light;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-html,body{height:100%}
-body{margin:0;background:var(--white);color:var(--ink);font:400 15px/1.55 var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
-@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 17px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
 h1,h2,h3{margin:0;font-family:var(--didone);font-weight:500;line-height:1;text-wrap:balance}
 p{margin:0}
 a{color:inherit}
-:focus-visible{outline:2px solid var(--red);outline-offset:2px}
-.kicker{font:500 max(10px,calc(1.9 * var(--u)))/1.3 var(--sans);letter-spacing:.24em;text-transform:uppercase;color:var(--red)}
+:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
+.kicker{font:500 .72rem/1.3 var(--sans);letter-spacing:.24em;text-transform:uppercase;color:var(--red)}
+.smallcaps{font:500 .72rem/1.3 var(--sans);letter-spacing:.2em;text-transform:uppercase}
 .num{font-variant-numeric:tabular-nums lining-nums}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:.6em;min-height:44px;padding:.75em 1.3em;font:500 .74rem/1 var(--sans);letter-spacing:.18em;text-transform:uppercase;text-decoration:none;border:1px solid var(--ink);cursor:pointer;border-radius:0;transition:background .2s,color .2s}
-.btn-ink{background:var(--ink);color:#fff}.btn-ink:hover{background:var(--red);border-color:var(--red)}
-.btn-line{background:transparent;color:var(--ink)}.btn-line:hover{background:var(--ink);color:#fff}
-.btn-red{background:var(--red);border-color:var(--red);color:#fff}.btn-red:hover{background:#7E1416}
-.btn-paper{border-color:#EDEBE6;color:#EDEBE6;background:transparent}.btn-paper:hover{background:#EDEBE6;color:var(--ink)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.6em;min-height:48px;padding:.8em 1.5em;font:500 .8rem/1 var(--sans);letter-spacing:.18em;text-transform:uppercase;text-decoration:none;border:1px solid var(--ink);cursor:pointer;transition:background .2s,color .2s;border-radius:0}
+.btn-ink{background:var(--ink);color:#fff}
+.btn-ink:hover{background:var(--red);border-color:var(--red)}
+.btn-line{background:transparent;color:var(--ink)}
+.btn-line:hover{background:var(--ink);color:#fff}
+.btn-red{background:var(--red);border-color:var(--red);color:#fff}
+.btn-red:hover{background:#7E1416}
 
-/* ===== mesa, libro y hojas ===== */
-.stage{position:fixed;inset:0;overflow:hidden;background:var(--white)}
-.book{position:absolute;left:0;top:0;width:calc(var(--pw) * 2);height:var(--ph);perspective:3200px}
-.book.is-closed-front #slotL{display:none}
-.book.is-closed-front #slotR{left:0;width:calc(var(--pw) * 2)}
-.book.is-closed-back #slotR{display:none}
-.book.is-closed-back #slotL{width:calc(var(--pw) * 2)}
-.slot{position:absolute;top:0;width:var(--pw);height:var(--ph)}
-#slotL{left:0}#slotR{left:var(--pw)}
-.book.single{width:var(--pw)}
-.book.single #slotL{display:none}
-.book.single #slotR{left:0}
-.leaf{position:absolute;top:0;width:var(--pw);height:var(--ph);transform-style:preserve-3d;transition:transform .76s cubic-bezier(.45,.05,.25,1),opacity .76s ease-in;z-index:30}
-.leaf.cover-out{left:0;width:calc(var(--pw) * 2);transform-origin:left center}
-.leaf.back-in{left:0;width:calc(var(--pw) * 2);transform-origin:right center}
-.leaf.cover-out .face-back,.leaf.back-in .face-back{display:none}
-.leaf.cover-out .face,.leaf.back-in .face{box-shadow:none}
-.leaf.fwd{left:var(--pw);transform-origin:left center}
-.leaf.bwd{left:0;transform-origin:right center}
-.single .leaf.fwd{left:0}
-.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden;background:var(--white);box-shadow:0 20px 50px -20px rgba(0,0,0,.45)}
-.face-back{transform:rotateY(180deg)}
-.face .edge{display:none}
-#slotL > .pg::after{content:'';position:absolute;top:0;bottom:0;right:0;width:9%;background:linear-gradient(270deg,rgba(0,0,0,.16),rgba(0,0,0,0));pointer-events:none;z-index:4}
-#slotR > .pg::after{content:'';position:absolute;top:0;bottom:0;left:0;width:9%;background:linear-gradient(90deg,rgba(0,0,0,.18),rgba(0,0,0,0));pointer-events:none;z-index:4}
-.single #slotR > .pg::after{display:none}
-.book.is-closed-front #slotR > .pg::after,.book.is-closed-back #slotL > .pg::after{display:none}
-.edge{position:absolute;top:0;bottom:0;width:max(22px,calc(5 * var(--u)));border:0;background:transparent;cursor:pointer;z-index:6;padding:0}
-.edge-r{right:0}.edge-l{left:0}
-#slotL .edge-r,#slotR .edge-l{display:none}
-.single #slotR .edge-l{display:block}
-.edge:hover{background:linear-gradient(90deg,rgba(0,0,0,0),rgba(0,0,0,.05))}
-.edge-l:hover{background:linear-gradient(270deg,rgba(0,0,0,0),rgba(0,0,0,.05))}
-.edge-r::after{content:'';position:absolute;right:0;bottom:0;border-style:solid;border-width:0 0 26px 26px;border-color:transparent transparent #E7E3DC transparent;filter:drop-shadow(-2px -2px 2px rgba(0,0,0,.15));transition:border-width .2s}
-.edge-r:hover::after{border-width:0 0 44px 44px}
-.edge-l::after{content:'';position:absolute;left:0;bottom:0;border-style:solid;border-width:26px 0 0 26px;border-color:transparent transparent transparent #E7E3DC;filter:drop-shadow(2px -2px 2px rgba(0,0,0,.15));transition:border-width .2s}
-.edge-l:hover::after{border-width:44px 0 0 44px}
-.pg-tour .edge-r{background:linear-gradient(90deg,rgba(0,0,0,0),rgba(0,0,0,.45))}
-.pg-tour .edge-r::before{content:'›';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font:400 28px/1 var(--didone)}
+/* ===== cabecera tipo revista ===== */
+.mast{background:var(--paper);border-bottom:1px solid var(--ink)}
+.mast-rail{display:flex;justify-content:space-between;gap:16px;padding:14px 0 0;font:500 .7rem/1.2 var(--sans);letter-spacing:.22em;text-transform:uppercase}
+.mast-rail span:nth-child(2){color:var(--red)}
+.masthead{font-family:var(--didone);font-weight:600;font-optical-sizing:auto;font-size:clamp(64px,15.4vw,212px);line-height:.86;letter-spacing:-.035em;text-align:center;margin:10px 0 6px;white-space:nowrap}
+.mast-sub{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:10px 0 12px;border-top:1px solid var(--ink)}
+.mast-sub em{font:italic 400 1.15rem/1.2 var(--didone)}
+.mast-nav{display:flex;flex-wrap:wrap;gap:22px}
+.mast-nav a{font:500 .72rem/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;text-decoration:none;padding:6px 0;border-bottom:1px solid transparent}
+.mast-nav a:hover{border-color:var(--ink)}
+@media (max-width:700px){.mast-rail span:nth-child(2){display:none}.mast-nav{gap:14px}}
 
-.controls{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:4px;padding:4px;background:rgba(251,250,248,.86);backdrop-filter:blur(6px);box-shadow:0 4px 18px rgba(0,0,0,.12);opacity:.6;transition:opacity .2s}
-.controls:hover,.controls:focus-within{opacity:1}
-body.at-cover .controls{display:none}
-.controls button{appearance:none;border:1px solid rgba(17,17,17,.18);background:transparent;height:34px;padding:0 14px;font:500 .68rem/1 var(--sans);letter-spacing:.18em;text-transform:uppercase;cursor:pointer;color:var(--ink)}
-.controls button:disabled{opacity:.35;cursor:default}
-.controls .ctl-arrow{font:400 1.3rem/1 var(--didone);padding:0 14px;letter-spacing:0}
-.ctl-count{min-width:96px;text-align:center;font:italic 500 1rem var(--didone)}
-.ctl-hint{display:none!important}
-
-/* ===== página base ===== */
-#store{display:none}
-.pg{--u:calc(min(var(--pw), var(--ph) * .74) / 100);position:relative;width:100%;height:100%;background:var(--white);container-type:size;overflow:hidden;display:flex;flex-direction:column;padding:calc(var(--u) * 7.5) max(calc(var(--u) * 8), calc((var(--pw) - var(--u) * 100) / 2 + var(--u) * 8)) calc(var(--u) * 5);gap:calc(var(--ph) * .024);font-size:max(12.5px,calc(var(--u) * 2.8))}
-.pg-cover,.pg-back{--u:calc(min(var(--pw) * 2, var(--ph) * 1.1) / 100)}
-.single .pg-cover,.single .pg-back{--u:calc(min(var(--pw), var(--ph) * .74) / 100)}
-.folio{margin-top:auto;display:flex;justify-content:space-between;align-items:baseline;padding-top:1.6cqh;border-top:1px solid var(--rule);font:500 max(9px,calc(1.7 * var(--u)))/1 var(--sans);letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
-.folio b{font:500 max(12px,calc(2.8 * var(--u))) var(--didone);letter-spacing:0;color:var(--ink)}
-.pg-dark{background:var(--night);color:#EDEBE6}
-.pg-dark .folio{border-color:#2A2A2C;color:#8E8A83}.pg-dark .folio b{color:#EDEBE6}
-
-/* portada */
-.pg-cover{padding:0;cursor:pointer;background:#DCE1E4}
-.cover-img{position:absolute;inset:0;background:linear-gradient(180deg,#DCE2E5 0%,#E7E5E0 62%,#C8C3B9 100%);background-size:cover;background-position:center 70%}
-.cover-img:not(.has-photo)::after{content:'';position:absolute;left:12%;right:12%;bottom:12%;height:38%;background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 250 160'%3E%3Cpath d='M20 150 V70 H120 V40 H230 V150 Z M34 86 h70 v44 h-70z M136 54 h80 v34 h-80z M140 102 h28 v48 h-28z M184 102 h32 v26 h-32z M0 150 H250' fill='none' stroke='%23333' stroke-width='1'/%3E%3C/svg%3E")}
-.cover-in{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:calc(4.5 * var(--u)) calc(5.5 * var(--u)) calc(5 * var(--u))}
-.cover-rail{display:flex;justify-content:space-between;font:500 max(9px,calc(1.7 * var(--u)))/1 var(--sans);letter-spacing:.24em;text-transform:uppercase}
-.cover-mast{font:600 calc(15.4 * var(--u))/.84 var(--didone);letter-spacing:-.045em;text-align:center;margin:calc(1.6 * var(--u)) -calc(1 * var(--u)) 0;white-space:nowrap}
-.cover-tag{text-align:center;font:italic 400 max(12px,calc(2.9 * var(--u)))/1.2 var(--didone);margin-top:calc(.8 * var(--u))}
-.cover-lines{margin-top:5cqh;display:grid;gap:2.2cqh;max-width:46%}
-.cl{display:grid;gap:.6cqh}
-.cl .kicker{font-size:max(9px,calc(1.7 * var(--u)))}
-.cl p{font:500 max(13px,calc(3.2 * var(--u)))/1.12 var(--didone)}
-.cl p b{font:500 max(9px,calc(1.6 * var(--u))) var(--sans);letter-spacing:.14em;color:var(--red);margin-left:.4em}
-.cover-big{margin-top:auto;padding:calc(4 * var(--u)) calc(5 * var(--u)) 0;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.35)}
-.cover-big p{font:italic 500 max(26px,calc(8.4 * var(--u)))/.95 var(--didone);letter-spacing:-.02em}
-.cover-foot{display:flex;justify-content:space-between;align-items:end;margin-top:calc(3 * var(--u));color:#fff;font:500 max(9px,calc(1.7 * var(--u)))/1.4 var(--sans);letter-spacing:.22em;text-transform:uppercase;text-shadow:0 1px 8px rgba(0,0,0,.4)}
-.cover-shade{position:absolute;left:0;right:0;bottom:0;height:46%;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.55));z-index:1;pointer-events:none}
-.open-hint{display:inline-flex;align-items:center;gap:8px;background:#fff;color:var(--ink);text-shadow:none;padding:8px 12px}
-
-/* índice */
-.idx-title{font:italic 500 calc(17 * var(--u))/.85 var(--didone);letter-spacing:-.03em}
-.idx{list-style:none;margin:0;padding:0;border-top:1px solid var(--ink)}
-.idx > li{border-bottom:1px solid var(--rule)}
-.idx button{appearance:none;background:none;border:0;width:100%;display:flex;align-items:baseline;gap:calc(2.4 * var(--u));text-align:left;cursor:pointer;color:var(--ink);padding:1.5cqh 0;font:inherit}
-.idx button:hover span{color:var(--red)}
-.idx-item em{font:italic 500 max(15px,calc(4.2 * var(--u)))/1 var(--didone);color:var(--red);min-width:calc(7 * var(--u))}
-.idx-item span{font:500 max(15px,calc(4 * var(--u)))/1.1 var(--didone);display:grid}
-.idx-item small{font:400 max(10px,calc(2.1 * var(--u)))/1.3 var(--sans);color:var(--muted)}
-.idx i{flex:1;border-bottom:1px dotted #B9B4AB;transform:translateY(-.3em)}
-.idx b{font:500 max(12px,calc(2.8 * var(--u))) var(--didone)}
-.idx ol{list-style:none;margin:0 0 1.2cqh;padding:0 0 0 calc(9.4 * var(--u))}
-.idx-sub{padding:.5cqh 0!important}
-.idx-sub span{font:400 max(12px,calc(2.6 * var(--u)))/1.2 var(--sans)}
-.idx-ed{display:grid;gap:1cqh;padding-top:1cqh}
-.idx-ed p{font:italic 400 max(12px,calc(2.7 * var(--u)))/1.45 var(--didone);color:#333}
-
-/* apertura de recorridos */
-.open-num{font:italic 500 calc(30 * var(--u))/.8 var(--didone);color:var(--red);letter-spacing:-.04em}
-.open-title{font:500 calc(13 * var(--u))/.9 var(--didone);letter-spacing:-.03em}
-.open-deck{font:italic 400 max(13px,calc(3.2 * var(--u)))/1.35 var(--didone);color:#333}
-.rec-list{list-style:none;margin:0;padding:0;border-top:1px solid var(--ink)}
-.rec-list li{border-bottom:1px solid var(--rule)}
-.rec-list button{appearance:none;background:none;border:0;width:100%;display:flex;align-items:center;gap:calc(3 * var(--u));text-align:left;cursor:pointer;padding:1.4cqh 0;color:var(--ink);font:inherit}
-.rec-list em{font:italic 500 max(18px,calc(5 * var(--u)))/1 var(--didone);color:var(--red)}
-.rec-list span{flex:1;display:grid;font:500 max(14px,calc(3.4 * var(--u)))/1.15 var(--didone)}
-.rec-list small{font:400 max(10px,calc(2 * var(--u)))/1.4 var(--sans);color:var(--muted)}
-.rec-list b{font:500 max(10px,calc(1.9 * var(--u))) var(--sans);letter-spacing:.14em;color:var(--muted)}
-.rec-list button:hover span{color:var(--red)}
-.how{font-size:max(11px,calc(2.3 * var(--u)));color:var(--muted)}
-
-/* proyecto */
-.proj-title{font:italic 500 calc(15 * var(--u))/.86 var(--didone);letter-spacing:-.03em}
-.proj-head{font:500 max(16px,calc(4.6 * var(--u)))/1.12 var(--didone)}
-.proj-dek{color:var(--muted)}
-.proj-dek::first-letter{font:500 3.3em/.8 var(--didone);float:left;margin:.06em .1em 0 0;color:var(--ink)}
-.specs{display:grid;margin:0;border-top:1px solid var(--ink)}
-.specs div{display:grid;grid-template-columns:32% 1fr;gap:calc(2 * var(--u));padding:1cqh 0;border-bottom:1px solid var(--rule)}
-.specs dt{font:500 max(9px,calc(1.7 * var(--u)))/1.7 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
-.specs dd{margin:0}
-.proj-actions{display:flex;gap:8px;flex-wrap:wrap}
-.proj-hint{font:italic 400 max(12px,calc(2.7 * var(--u))) var(--didone);color:var(--red)}
-.pg-tour{padding:0;gap:0;background:#141415}
-.tour-frame{position:relative;flex:1;min-height:0;background:#141415}
+/* ===== spread de recorridos ===== */
+.issue{padding:28px 0 0}
+.spread{position:relative;display:grid;grid-template-columns:minmax(300px,.82fr) minmax(0,1.68fr);background:var(--white);border:1px solid var(--rule);box-shadow:0 30px 60px -40px rgba(0,0,0,.35);min-height:clamp(540px,78vh,840px);overflow:hidden}
+.page-left{position:relative;padding:clamp(24px,3.2vw,48px);display:flex;flex-direction:column;gap:20px;border-right:1px solid var(--rule)}
+.pg-title{font-size:clamp(3rem,6.4vw,6.2rem);font-weight:500;letter-spacing:-.03em;font-style:italic}
+.pg-head{font:500 clamp(1.35rem,2vw,1.8rem)/1.15 var(--didone)}
+.pg-dek{color:var(--muted);font-size:1.02rem;max-width:40ch}
+.pg-dek::first-letter{font:500 3.4em/.8 var(--didone);float:left;margin:.06em .1em 0 0;color:var(--ink)}
+.specs{display:grid;gap:0;margin:0;border-top:1px solid var(--ink)}
+.specs div{display:grid;grid-template-columns:120px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid var(--rule)}
+.specs dt{font:500 .68rem/1.6 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.specs dd{margin:0;font-size:.95rem}
+.pg-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:auto}
+.pg-quote{font:italic 400 1.15rem/1.35 var(--didone);border-left:2px solid var(--red);padding-left:14px;color:#2A2A2A}
+.pg-folio{display:flex;justify-content:space-between;font:500 .68rem/1 var(--sans);letter-spacing:.22em;text-transform:uppercase;color:var(--muted);padding-top:12px;border-top:1px solid var(--rule)}
+.pg-folio b{font:500 1rem var(--didone);letter-spacing:0;color:var(--ink)}
+.page-right{position:relative;margin:0;display:flex;flex-direction:column;background:#E9E6E0}
+.tour-frame{position:relative;flex:1;min-height:340px;overflow:hidden;background:#1A1A1B}
 .tour-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+.page-right::before{content:'';position:absolute;left:0;top:0;bottom:0;width:38px;background:linear-gradient(90deg,rgba(0,0,0,.22),rgba(0,0,0,0));pointer-events:none;z-index:3}
 .tour-poster{position:absolute;inset:0;display:grid;place-items:center;background:radial-gradient(ellipse at 30% 20%,#2A2A2C,#111113 70%);color:#EDEBE6;z-index:2}
-.poster-inner{display:grid;gap:2cqh;justify-items:center;text-align:center;padding:calc(6 * var(--u))}
-.poster-num{font:italic 500 calc(34 * var(--u))/.8 var(--didone);color:transparent;-webkit-text-stroke:1px #CFC9BE}
-.poster-art{width:calc(62 * var(--u))}.poster-art svg{width:100%;height:auto}
+.poster-inner{display:grid;gap:14px;justify-items:center;text-align:center;padding:24px;max-width:520px}
+.poster-num{font:italic 500 clamp(6rem,14vw,12rem)/.8 var(--didone);color:transparent;-webkit-text-stroke:1px #CFC9BE}
+.poster-art{width:min(320px,70%)}
+.poster-art svg{width:100%;height:auto}
 .poster-art svg *{fill:none;stroke:#BFB8AB;stroke-width:1}
-.poster-msg{font:500 max(10px,calc(1.9 * var(--u)))/1.5 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:#CFC9BE}
-.tour-cap{display:flex;justify-content:space-between;gap:12px;padding:1.6cqh calc(6 * var(--u));background:var(--white);border-top:1px solid var(--rule);font:500 max(9px,calc(1.7 * var(--u)))/1.6 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
-.tour-cap em{font:italic 500 max(13px,calc(2.9 * var(--u)))/1.2 var(--didone);letter-spacing:0;text-transform:none;color:var(--ink)}
+.poster-msg{font:500 .72rem/1.5 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:#CFC9BE}
+.poster-inner .btn{border-color:#EDEBE6;color:#EDEBE6}
+.poster-inner .btn:hover{background:#EDEBE6;color:var(--ink)}
+.tour-cap{display:flex;justify-content:space-between;gap:16px;padding:10px 16px;background:var(--white);border-top:1px solid var(--rule);font:italic 400 .95rem/1.4 var(--didone);color:#3A3A3A}
+.tour-cap span:last-child{font:500 .66rem/1.6 var(--sans);font-style:normal;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.turn-sheet{visibility:hidden;position:absolute;inset:0;z-index:10;background:var(--white);pointer-events:none;transform:translateX(102%);box-shadow:-30px 0 40px -10px rgba(0,0,0,.25)}
+.turn-sheet[class*='in-'],.turn-sheet[class*='out-']{visibility:visible}
+.turn-sheet.in-next{animation:inNext .42s cubic-bezier(.6,.05,.3,1) forwards}
+.turn-sheet.out-next{transform:translateX(0);animation:outNext .42s cubic-bezier(.6,.05,.3,1) forwards}
+.turn-sheet.in-prev{transform:translateX(-102%);animation:inPrev .42s cubic-bezier(.6,.05,.3,1) forwards;box-shadow:30px 0 40px -10px rgba(0,0,0,.25)}
+.turn-sheet.out-prev{transform:translateX(0);animation:outPrev .42s cubic-bezier(.6,.05,.3,1) forwards;box-shadow:30px 0 40px -10px rgba(0,0,0,.25)}
+@keyframes inNext{from{transform:translateX(102%)}to{transform:translateX(0)}}
+@keyframes outNext{from{transform:translateX(0)}to{transform:translateX(-102%)}}
+@keyframes inPrev{from{transform:translateX(-102%)}to{transform:translateX(0)}}
+@keyframes outPrev{from{transform:translateX(0)}to{transform:translateX(102%)}}
+.pager{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:stretch;margin-top:0;border-bottom:1px solid var(--rule)}
+.pg-arrow{appearance:none;background:none;border:0;padding:16px 4px;font:500 .72rem/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;cursor:pointer;color:var(--ink);display:flex;align-items:center;gap:10px}
+.pg-arrow b{font:400 1.6rem/1 var(--didone)}
+.pg-arrow:disabled{opacity:.3;cursor:default}
+.pg-tabs{display:flex;justify-content:center;gap:0;overflow-x:auto}
+.pg-tab{appearance:none;background:none;border:0;border-top:2px solid transparent;padding:14px 18px;cursor:pointer;display:flex;align-items:baseline;gap:10px;color:var(--muted);white-space:nowrap}
+.pg-tab-n{font:italic 500 1.4rem/1 var(--didone)}
+.pg-tab-t{font:500 .7rem/1 var(--sans);letter-spacing:.18em;text-transform:uppercase}
+.pg-tab[aria-current=page]{color:var(--ink);border-top-color:var(--red)}
+@media (max-width:900px){
+  .spread{grid-template-columns:1fr;min-height:0}
+  .page-right{order:-1}
+  .tour-frame{min-height:0;height:62vh;flex:none}
+  .page-left{border-right:0}
+  .page-right::before{display:none}
+  .pg-tab-t{display:none}
+  .pg-arrow span{display:none}
+}
 
-/* configurador en páginas */
-.pg-cfg{gap:calc(var(--ph) * .016);padding-bottom:calc(var(--u) * 4)}
-.pg-cfg-head{display:flex;align-items:baseline;gap:calc(3 * var(--u));border-bottom:1px solid var(--ink);padding-bottom:1.4cqh}
-.pg-cfg-head em{font:italic 500 max(30px,calc(10 * var(--u)))/.8 var(--didone);color:var(--red)}
-.pg-cfg-head h2{font-size:max(22px,calc(6.6 * var(--u)));letter-spacing:-.02em}
-.pg-scroll{flex:1;min-height:0;overflow:auto;padding-right:6px;margin-right:-6px;overscroll-behavior:contain}
-.pg-scroll::-webkit-scrollbar{width:4px}.pg-scroll::-webkit-scrollbar-thumb{background:#C9C4BB}
+
+/* realidad aumentada y lentes VR */
+.vmode.v-xr{border-color:var(--red);color:var(--red)}
+.viewer.vr-on{position:fixed;inset:0;z-index:300;height:100%!important;width:100%;background:#000}
+.viewer.vr-on .v-bar,.viewer.vr-on .v-help,.viewer.vr-on #walk-ui{display:none!important}
+.vr-ui{position:absolute;left:0;right:0;bottom:0;display:grid;justify-items:center;gap:8px;padding:12px;background:linear-gradient(0deg,rgba(0,0,0,.6),rgba(0,0,0,0));color:#fff;pointer-events:none}
+.vr-ui > *{pointer-events:auto}
+.vr-room{font:italic 500 1rem var(--didone);text-align:center}
+.vr-btns{display:flex;gap:8px}
+.vr-btns button{appearance:none;border:1px solid rgba(255,255,255,.5);background:rgba(0,0,0,.45);color:#fff;padding:9px 14px;font:500 .7rem var(--sans);letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
+.vr-tip{font-size:.74rem;opacity:.75;text-align:center;max-width:46ch}
+.ar-ov{position:fixed;inset:0;z-index:60;background:rgba(15,15,16,.82);display:grid;place-items:center;padding:16px}
+.ar-card{background:var(--paper);width:min(560px,100%);max-height:100%;overflow:auto;padding:22px;display:grid;gap:14px}
+.ar-head{display:flex;justify-content:space-between;align-items:start;gap:12px}
+.ar-head h3{font:italic 500 1.9rem/1 var(--didone);margin-top:6px}
+.ar-close{appearance:none;border:1px solid var(--rule);background:var(--white);width:40px;height:40px;cursor:pointer;font-size:1rem}
+.ar-stage{position:relative;height:min(46vh,360px);background:#E9E6E0;display:grid;place-items:center}
+.ar-stage model-viewer{position:absolute;inset:0;width:100%;height:100%;--poster-color:transparent}
+.ar-status{position:absolute;left:10px;right:10px;bottom:10px;z-index:2;font:500 .8rem var(--sans);background:rgba(255,255,255,.9);padding:8px 10px;margin:0}
+
+/* ===== secciones editoriales ===== */
+.feature{padding:clamp(56px,8vw,110px) 0}
+.feat-head{display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,3vw,40px);align-items:end;padding-bottom:22px;margin-bottom:32px;border-bottom:1px solid var(--ink)}
+.feat-num{font:italic 500 clamp(5rem,11vw,9.5rem)/.78 var(--didone);color:var(--red)}
+.feat-head h2{font-size:clamp(2.4rem,5.4vw,4.8rem);letter-spacing:-.025em}
+.feat-head p.deck{font:italic 400 clamp(1.1rem,1.6vw,1.35rem)/1.4 var(--didone);color:#3A3A3A;max-width:60ch;margin-top:14px}
+@media (max-width:640px){.feat-head{grid-template-columns:1fr}}
+
 /* configurador */
 .cfg-grid{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);gap:clamp(20px,3vw,40px);align-items:start}
 @media (max-width:1000px){.cfg-grid{grid-template-columns:1fr}}
@@ -296,119 +261,120 @@ td.num{text-align:right;font-family:var(--mono);white-space:nowrap}
 .gen-card li.done::before{background:var(--ink);border-color:var(--ink)}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-
-form.cfg{position:static;border:0;padding:0;background:none;gap:16px}
-.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
-.kpi:nth-child(2){border-right:0}
-.kpi:nth-child(-n+2){border-bottom:1px solid var(--rule)}
-.kpi strong{font-size:1.6rem}
-.viewer{height:max(260px,calc(64 * var(--u)))}
-.cta{grid-template-columns:1fr}
-.cta-side{justify-items:start}
-.cta h3{font-size:1.5rem}
-.res{gap:14px}
-
-/* fidelidad, método, preguntas */
-.big-quote{font:italic 400 max(26px,calc(8.6 * var(--u)))/1.02 var(--didone);letter-spacing:-.01em}
-.big-quote::before{content:'«';color:var(--red)}.big-quote::after{content:'»';color:var(--red)}
-.checks{list-style:none;padding:0;margin:0;border-top:1px solid var(--ink)}
-.checks li{padding:1.4cqh 0;border-bottom:1px solid var(--rule);display:grid;grid-template-columns:calc(8 * var(--u)) 1fr;gap:calc(2 * var(--u))}
-.checks li span{font:italic 500 max(14px,calc(3.4 * var(--u))) var(--didone);color:var(--red)}
-.cmp{position:relative;flex:1;min-height:0;overflow:hidden;background:#C9C6BE}
+/* antes / después */
+.ba{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:clamp(24px,5vw,72px);align-items:center}
+@media (max-width:900px){.ba{grid-template-columns:1fr}}
+.ba blockquote{margin:0;font:italic 400 clamp(1.9rem,3.6vw,3.1rem)/1.08 var(--didone);letter-spacing:-.01em}
+.ba blockquote::before{content:'«';color:var(--red)}
+.ba blockquote::after{content:'»';color:var(--red)}
+.checks{list-style:none;padding:0;margin:26px 0 0;display:grid;gap:0;border-top:1px solid var(--ink)}
+.checks li{padding:12px 0;border-bottom:1px solid var(--rule);display:grid;grid-template-columns:36px 1fr;gap:8px}
+.checks li span{font:italic 500 1.1rem var(--didone);color:var(--red)}
+.cmp{position:relative;aspect-ratio:16/10;overflow:hidden;background:#C9C6BE}
 .cmp-layer{position:absolute;inset:0;display:grid;place-items:center}
 .cmp-layer svg{width:84%;height:84%}
 .cmp-bottom{background:linear-gradient(180deg,#E3DED5,#C9C2B5)}
 .cmp-bottom svg *{fill:#F3F0EA;stroke:#6F6A60;stroke-width:1}
 .cmp-top{background:linear-gradient(180deg,#1C1C1E,#2B2B2E);clip-path:inset(0 50% 0 0)}
 .cmp-top svg *{fill:none;stroke:#D7D0C4;stroke-width:1}
-.cmp-tag{position:absolute;top:12px;font:500 .62rem var(--sans);letter-spacing:.2em;text-transform:uppercase;padding:5px 9px;background:var(--white);color:var(--ink)}
+.cmp-tag{position:absolute;top:12px;font:500 .64rem var(--sans);letter-spacing:.2em;text-transform:uppercase;padding:5px 9px;background:var(--white);color:var(--ink)}
 .cmp-line{position:absolute;top:0;bottom:0;left:50%;width:1px;background:#fff;pointer-events:none}
-.cmp-range{position:absolute;inset:auto 12px 12px 12px;width:calc(100% - 24px);accent-color:var(--red)}
-.cmp-note{font:italic 400 max(12px,calc(2.6 * var(--u))) var(--didone);color:var(--muted)}
-.sec-head{display:grid;gap:1cqh}
-.sec-head h2{font-size:max(26px,calc(9 * var(--u)));letter-spacing:-.025em}
-.steps{display:grid;gap:0;border-top:1px solid var(--ink)}
-.step{display:grid;grid-template-columns:calc(12 * var(--u)) 1fr;gap:calc(3 * var(--u));padding:1.8cqh 0;border-bottom:1px solid var(--rule)}
-.step .n{font:italic 500 max(22px,calc(7 * var(--u)))/.9 var(--didone);color:var(--red)}
-.step h3{font-size:max(16px,calc(4.2 * var(--u)))}
-.step p{color:var(--muted);margin-top:.6cqh}
-.faq{display:grid;border-top:1px solid var(--ink);overflow:auto}
-.faq details{border-bottom:1px solid var(--rule);padding:1.5cqh 0}
-.faq summary{font:500 max(14px,calc(3.5 * var(--u)))/1.25 var(--didone);cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:12px}
-.faq summary::after{content:'+';font:300 1.2rem var(--sans);color:var(--red)}
+.cmp-range{position:absolute;inset:auto 12px 12px 12px;width:calc(100% - 24px)}
+.cmp-note{font:italic 400 .95rem var(--didone);color:var(--muted);margin-top:10px}
+
+/* método */
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0}
+.step{padding:0 22px 0 0;display:grid;gap:10px;align-content:start;border-right:1px solid var(--rule);margin-right:22px}
+.step:last-child{border-right:0;margin-right:0}
+.step .n{font:italic 500 3.4rem/.9 var(--didone);color:var(--red)}
+.step h3{font-size:1.5rem}
+.step p{color:var(--muted);font-size:.95rem}
+@media (max-width:900px){.steps{grid-template-columns:1fr 1fr;row-gap:28px}.step:nth-child(2){border-right:0;margin-right:0}}
+@media (max-width:520px){.steps{grid-template-columns:1fr}.step{border-right:0;margin-right:0}}
+.faq{display:grid;max-width:900px;border-top:1px solid var(--ink)}
+.faq details{border-bottom:1px solid var(--rule);padding:18px 0}
+.faq summary{font:500 1.3rem/1.25 var(--didone);cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:16px}
+.faq summary::after{content:'+';font:300 1.4rem var(--sans);color:var(--red)}
 .faq details[open] summary::after{content:'−'}
-.faq p{margin-top:1cqh;color:var(--muted)}
-.contact-big{font:italic 500 max(34px,calc(12 * var(--u)))/.9 var(--didone);letter-spacing:-.03em}
-.contact-lines{display:grid;gap:1.4cqh}
-.colofon dl{display:grid;margin:0;border-top:1px solid var(--ink)}
-.colofon dl div{display:grid;grid-template-columns:38% 1fr;gap:calc(2 * var(--u));padding:1.2cqh 0;border-bottom:1px solid var(--rule)}
-.colofon dt{font:500 max(9px,calc(1.7 * var(--u)))/1.7 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
-.colofon dd{margin:0}
-.pg-back{justify-content:space-between;padding:calc(var(--u) * 6) calc(var(--u) * 8)}
-.back-mark{font:600 calc(9 * var(--u))/1 var(--didone);letter-spacing:-.03em}
-.back-quote{font:italic 400 max(26px,calc(8 * var(--u)))/1.05 var(--didone)}
-.back-foot{display:grid;gap:2cqh;font:500 max(9px,calc(1.8 * var(--u)))/1.6 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:#A6A199}
-#to-cover{justify-self:start}
+.faq p{margin-top:10px;color:var(--muted);max-width:70ch}
+footer{border-top:1px solid var(--ink);padding:30px 0 40px}
+footer .wrap{display:grid;grid-template-columns:auto 1fr auto;gap:20px;align-items:end}
+.foot-mark{font:600 2.4rem/1 var(--didone);letter-spacing:-.03em}
+footer p{font:500 .68rem/1.6 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+@media (max-width:700px){footer .wrap{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<div class="stage">
-  <div class="book is-closed-front" id="book" aria-label="Revista Liberache">
-    <div class="slot" id="slotL"></div>
-    <div class="slot" id="slotR"></div>
-    <div class="leaf" id="leaf" hidden><div class="face face-front" id="leafFront"></div><div class="face face-back" id="leafBack"></div></div>
+
+<header class="mast">
+  <div class="wrap">
+    <div class="mast-rail"><span>Nº 01 · Noviembre 2026</span><span>Arquitectura · Interiorismo · Construcción</span><span>Tepic &amp; Xalisco</span></div>
+    <h1 class="masthead" aria-label="Estudio Liberache">LIBERACHE</h1>
+    <div class="mast-sub">
+      <em>Casas que se recorren antes de existir.</em>
+      <nav class="mast-nav" aria-label="Secciones">
+        <a href="#recorridos">Recorridos</a>
+        <a href="#configurador">Diseña la tuya</a>
+        <a href="#fidelidad">Fidelidad</a>
+        <a href="#metodo">Método</a>
+        <a href="#preguntas">Preguntas</a>
+      </nav>
+    </div>
   </div>
-  <nav class="controls" aria-label="Pasar página">
-    <button type="button" class="ctl-arrow" id="ctl-prev" aria-label="Página anterior">‹</button>
-    <button type="button" id="ctl-index">Índice</button>
-    <span class="ctl-count" id="ctl-count" aria-live="polite"></span>
-    <button type="button" class="ctl-arrow" id="ctl-next" aria-label="Página siguiente">›</button>
-    <span class="ctl-hint" id="ctl-hint">Toca la portada para abrir la revista</span>
-  </nav>
-</div>
+</header>
 
-<div id="store">
+<main>
+<section class="issue" id="recorridos" aria-label="Recorridos virtuales">
+  <div class="wrap">
+    <div class="spread" id="spread">
+      <article class="page-left" id="page-left">
+        <p class="kicker" id="pg-kicker"></p>
+        <h2 class="pg-title" id="pg-title"></h2>
+        <p class="pg-head" id="pg-head"></p>
+        <p class="pg-dek" id="pg-dek"></p>
+        <dl class="specs" id="pg-specs"></dl>
+        <p class="pg-quote">Lo que apruebas en pantalla es lo que se construye.</p>
+        <div class="pg-actions">
+          <a class="btn btn-ink" id="pg-open" href="#" target="_blank" rel="noopener">Pantalla completa ↗</a>
+          <a class="btn btn-line" href="#configurador">Quiero una así</a>
+        </div>
+        <div class="pg-folio"><span>Liberache · Recorridos</span><b id="pg-folio"></b></div>
+      </article>
+      <figure class="page-right">
+        <div class="tour-frame" id="tour-frame">
+          <div class="tour-poster" id="tour-poster">
+            <div class="poster-inner">
+              <span class="poster-num" id="poster-num"></span>
+              <div class="poster-art" id="poster-art"></div>
+              <p class="poster-msg" id="poster-msg"></p>
+              <a class="btn" id="poster-open" href="#" target="_blank" rel="noopener" hidden>Abrir recorrido ↗</a>
+            </div>
+          </div>
+        </div>
+        <figcaption class="tour-cap"><span id="tour-cap"></span><span>Recorrido virtual</span></figcaption>
+      </figure>
+      <div class="turn-sheet" id="turn-sheet" aria-hidden="true"></div>
+    </div>
+    <nav class="pager" aria-label="Páginas de recorridos">
+      <button type="button" class="pg-arrow" id="pg-prev"><b>‹</b><span>Anterior</span></button>
+      <div class="pg-tabs" id="pg-tabs"></div>
+      <button type="button" class="pg-arrow" id="pg-next"><span>Siguiente</span><b>›</b></button>
+    </nav>
+  </div>
+</section>
 
-  <section class="pg pg-cover" data-id="cover" aria-label="Portada">
-    <div class="cover-img" id="cover-img"></div>
-    <div class="cover-shade"></div>
-    <div class="cover-in">
-      <div class="cover-rail"><span>Nº 01 · Noviembre 2026</span><span>Tepic &amp; Xalisco</span></div>
-      <h1 class="cover-mast">LIBERACHE</h1>
-      <p class="cover-tag">Arquitectura · Interiorismo · Construcción</p>
-      <div class="cover-lines">
-        <div class="cl"><span class="kicker">Recorridos</span><p>Tres casas que se caminan antes de existir <b data-pageref="rec"></b></p></div>
-        <div class="cl"><span class="kicker">El prototipo</span><p>Tu terreno, tu presupuesto, tu casa en 3D <b data-pageref="cfgL"></b></p></div>
-        <div class="cl"><span class="kicker">Fidelidad</span><p>Del render a la obra, sin traducciones <b data-pageref="fidL"></b></p></div>
+<section class="feature" id="configurador">
+  <div class="wrap">
+    <div class="feat-head">
+      <span class="feat-num">02</span>
+      <div>
+        <p class="kicker">El prototipo</p>
+        <h2 style="margin-top:10px">Diseña la tuya en dos minutos.</h2>
+        <p class="deck">Dinos tu terreno y tu presupuesto. Te mostramos qué casa cabe, con recorrido 3D, planos, materiales y costo. El diseño a tu medida lo hacemos juntos.</p>
       </div>
-      <div class="cover-big"><p>Recorre tu casa antes de construirla.</p></div>
-      <div class="cover-foot"><span>Edición de cortesía</span><span class="open-hint">Abrir revista →</span></div>
     </div>
-  </section>
 
-  <section class="pg" data-id="indice" aria-label="Índice">
-    <p class="kicker">En este número</p>
-    <h2 class="idx-title">Índice</h2>
-    <ol class="idx" id="idx"></ol>
-    <div class="idx-ed">
-      <p class="kicker">Editorial</p>
-      <p>Una casa se decide con el corazón y se construye con números. Aquí la recorres primero, sabes cuánto cuesta y qué lleva, y después la construimos tal cual la aprobaste.</p>
-    </div>
-    <footer class="folio"><span>Liberache Nº 01</span><b></b></footer>
-  </section>
-
-  <section class="pg" data-id="rec" aria-label="Recorridos">
-    <span class="open-num">01</span>
-    <h2 class="open-title">Recorridos</h2>
-    <p class="open-deck">Proyectos del estudio en recorrido virtual. Entra, mira alrededor y camina de un espacio a otro como si ya estuvieras ahí.</p>
-    <ol class="rec-list" id="rec-list"></ol>
-    <p class="how">Arrastra dentro de cada recorrido para mirar. Para pasar de página toca el borde derecho de la hoja.</p>
-    <footer class="folio"><span>Recorridos</span><b></b></footer>
-  </section>
-
-  <section class="pg pg-cfg no-flip" data-id="cfgL" aria-label="Diseña la tuya">
-    <div class="pg-cfg-head"><em>02</em><div><p class="kicker">El prototipo</p><h2>Diseña la tuya</h2></div></div>
-    <div class="pg-scroll">
+    <div class="cfg-grid">
       <form id="cfg" class="cfg" novalidate>
         <div class="prog" aria-live="polite">
           <div class="prog-track"><span class="prog-bar" id="prog-bar"></span></div>
@@ -488,26 +454,21 @@ form.cfg{position:static;border:0;padding:0;background:none;gap:16px}
         </fieldset>
         <button type="submit" class="btn btn-red gen" id="gen-btn">Generar mi prototipo</button>
       </form>
-    </div>
-    <footer class="folio"><span>Diseña la tuya</span><b></b></footer>
-  </section>
 
-  <section class="pg pg-cfg no-flip" data-id="cfgR" aria-label="Tu prototipo">
-    <div class="pg-scroll">
-      <div class="res" id="resultado">
+      <div class="res" id="resultado" style="scroll-margin-top:16px">
         <div class="res-head">
           <span class="pill" id="res-state">Prototipo de ejemplo</span>
-          <span class="hint">Sin terreno, licencias ni honorarios.</span>
+          <span class="hint">No incluye terreno, licencias ni honorarios de proyecto.</span>
         </div>
         <div class="kpis">
           <div class="kpi"><small>Construcción</small><strong class="num"><span id="k-area"></span> m²</strong></div>
           <div class="kpi"><small>Costo estimado</small><strong class="num" id="k-costo"></strong></div>
-          <div class="kpi"><small>Huella</small><strong class="num" id="k-huella" style="font-size:1.25rem"></strong><span class="hint" id="k-niveles"></span></div>
+          <div class="kpi"><small>Huella</small><strong class="num" id="k-huella" style="font-size:1.5rem"></strong><span class="hint" id="k-niveles"></span></div>
           <div class="kpi" style="padding:0"><div class="status" id="k-status"></div></div>
         </div>
         <div class="advice" id="advice" hidden></div>
         <div class="tabs" role="tablist" aria-label="Resultados">
-          <button class="tab" role="tab" id="t-3d" data-t="3d" aria-controls="p-3d" aria-selected="true">3D</button>
+          <button class="tab" role="tab" id="t-3d" data-t="3d" aria-controls="p-3d" aria-selected="true">Recorrido 3D</button>
           <button class="tab" role="tab" id="t-plan" data-t="plan" aria-controls="p-plan" aria-selected="false">Planos</button>
           <button class="tab" role="tab" id="t-mat" data-t="mat" aria-controls="p-mat" aria-selected="false">Materiales</button>
           <button class="tab" role="tab" id="t-cost" data-t="cost" aria-controls="p-cost" aria-selected="false">Presupuesto</button>
@@ -517,12 +478,14 @@ form.cfg{position:static;border:0;padding:0;background:none;gap:16px}
             <canvas id="viewer-canvas"></canvas>
             <div class="v-bar">
               <button type="button" class="vmode" data-m="exterior" aria-pressed="true">Exterior</button>
-              <button type="button" class="vmode" data-m="maqueta" aria-pressed="false">Maqueta</button>
-              <button type="button" class="vmode" data-m="walk" aria-pressed="false">Recorrer</button>
+              <button type="button" class="vmode" data-m="maqueta" aria-pressed="false">Maqueta sin techo</button>
+              <button type="button" class="vmode" data-m="walk" aria-pressed="false">Recorrer por dentro</button>
               <div class="lvl-chips" id="lvl-chips" hidden></div>
-              <button type="button" class="v-full" id="v-full">⤢</button>
+              <button type="button" class="vmode v-xr" id="v-ar">En tu terreno (RA)</button>
+              <button type="button" class="vmode v-xr" id="v-vr">Lentes VR</button>
+              <button type="button" class="v-full" id="v-full">Pantalla completa</button>
             </div>
-            <span class="v-help" id="v-help">Arrastra para girar</span>
+            <span class="v-help" id="v-help">Arrastra para girar · rueda o pellizco para acercar</span>
             <div id="walk-ui" hidden>
               <span class="walk-room" id="walk-room"></span>
               <div class="pad" aria-label="Controles de recorrido">
@@ -533,21 +496,35 @@ form.cfg{position:static;border:0;padding:0;background:none;gap:16px}
               </div>
             </div>
             <p class="viewer-msg" id="viewer-msg" hidden></p>
+            <div class="vr-ui" id="vr-ui" hidden>
+              <span class="vr-room" id="vr-room"></span>
+              <div class="vr-btns">
+                <button type="button" id="vr-prev" aria-label="Pieza anterior">‹</button>
+                <button type="button" id="vr-next">Siguiente pieza ›</button>
+                <button type="button" id="vr-exit">Salir ✕</button>
+              </div>
+              <span class="vr-tip">Pon el teléfono en tus lentes de cartón y gira la cabeza. Toca la pantalla para pasar a la siguiente pieza.</span>
+            </div>
           </div>
         </div>
         <div class="tabpanel" id="p-plan" role="tabpanel" aria-labelledby="t-plan" hidden>
           <div class="plan-wrap" id="plan-wrap"></div>
-          <p class="note">Planta esquemática generada automáticamente; el diseño final se resuelve con el arquitecto.</p>
+          <p class="note">Planta esquemática generada automáticamente. Las dimensiones finales, la orientación solar y la ventilación cruzada se resuelven en el diseño con el arquitecto.</p>
         </div>
         <div class="tabpanel" id="p-mat" role="tabpanel" aria-labelledby="t-mat" hidden>
-          <div class="tbl-wrap"><table><thead><tr><th>Material</th><th style="text-align:right">Cantidad</th><th>Unidad</th></tr></thead><tbody id="mat-body"></tbody></table></div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Material</th><th style="text-align:right">Cantidad</th><th>Unidad</th></tr></thead>
+              <tbody id="mat-body"></tbody>
+            </table>
+          </div>
           <p class="note" id="mat-note"></p>
         </div>
         <div class="tabpanel" id="p-cost" role="tabpanel" aria-labelledby="t-cost" hidden>
           <div class="cost-card">
             <div class="cost-top">
-              <div><p class="hint">Costo estimado</p><strong class="num" id="cost-total"></strong><p class="hint num" id="cost-m2"></p></div>
-              <div style="text-align:right"><p class="hint">Tu presupuesto</p><p class="num" style="font:500 1.2rem var(--didone)" id="cost-budget"></p></div>
+              <div><p class="hint">Costo estimado de construcción</p><strong class="num" id="cost-total"></strong><p class="hint num" id="cost-m2"></p></div>
+              <div style="text-align:right"><p class="hint">Tu presupuesto</p><p class="num" style="font:500 1.3rem var(--didone)" id="cost-budget"></p></div>
             </div>
             <div>
               <div class="meter" role="img" aria-label="Costo contra presupuesto"><span class="meter-fill" id="meter-fill"></span><span class="meter-over" id="meter-over"></span></div>
@@ -555,11 +532,12 @@ form.cfg{position:static;border:0;padding:0;background:none;gap:16px}
             </div>
             <div style="display:grid;gap:10px" id="cost-body"></div>
           </div>
+          <p class="note">Distribución típica por partidas para vivienda de concreto y block. En el proyecto ejecutivo cada partida se cotiza con precios unitarios.</p>
         </div>
         <div class="cta">
           <div>
             <h3>¿Te gustó? Ahora hagámosla tuya.</h3>
-            <p>El arquitecto Rigo y su equipo diseñan tu proyecto a la medida, con recorrido realista y visor de realidad virtual. Respetamos el presupuesto que tú defines.</p>
+            <p>El arquitecto Rigo y su equipo diseñan tu proyecto a la medida, con recorrido realista y visor de realidad virtual, hasta que digas «esa es mi casa». Respetamos el presupuesto que tú defines.</p>
           </div>
           <div class="cta-side">
             <a class="btn btn-red" id="cta-wa" href="#" target="_blank" rel="noopener">Quiero mi diseño por WhatsApp</a>
@@ -568,105 +546,106 @@ form.cfg{position:static;border:0;padding:0;background:none;gap:16px}
           </div>
         </div>
         <div class="inm" id="cta-inm" hidden>
-          <span>¿Aún no tienes terreno? Alta Inmobiliaria te ayuda a encontrarlo.</span>
+          <span>¿Aún no tienes terreno? Alta Inmobiliaria te ayuda a encontrar uno que le quede a este proyecto.</span>
           <a id="cta-inm-a" href="#" target="_blank" rel="noopener">Buscar terreno →</a>
         </div>
       </div>
     </div>
-    <footer class="folio"><span>Tu prototipo</span><b></b></footer>
-  </section>
+  </div>
+</section>
 
-  <section class="pg" data-id="fidL" aria-label="Fidelidad de obra">
-    <p class="kicker">03 · Fidelidad de obra</p>
-    <p class="big-quote">Lo que ves es lo que se construye.</p>
-    <ul class="checks">
-      <li><span>i.</span>El recorrido sale del mismo modelo que los planos, las cantidades y el presupuesto.</li>
-      <li><span>ii.</span>Apruebas cada espacio, material y color en pantalla antes de iniciar obra.</li>
-      <li><span>iii.</span>En cada etapa de obra te mostramos el comparativo render contra foto.</li>
-    </ul>
-    <footer class="folio"><span>Fidelidad</span><b></b></footer>
-  </section>
-
-  <section class="pg" data-id="fidR" aria-label="Render contra obra">
-    <div class="sec-head"><p class="kicker">Antes y después</p><h2>Del render a la obra.</h2></div>
-    <div class="cmp no-flip-zone" aria-label="Comparativo render contra obra">
-      <div class="cmp-layer cmp-bottom" aria-hidden="true"><svg viewBox="0 0 200 120"><path d="M20 110 V45 H110 V25 H180 V110 Z"/><path d="M30 60 h60 v35 h-60z M120 35 h50 v28 h-50z M125 72 h20 v38 h-20z"/></svg></div>
-      <div class="cmp-layer cmp-top" id="cmp-top" aria-hidden="true"><svg viewBox="0 0 200 120"><path d="M20 110 V45 H110 V25 H180 V110 Z"/><path d="M30 60 h60 v35 h-60z M120 35 h50 v28 h-50z M125 72 h20 v38 h-20z M0 110 H200"/></svg></div>
-      <span class="cmp-line" id="cmp-line"></span>
-      <span class="cmp-tag" style="left:12px">Render</span>
-      <span class="cmp-tag" style="right:12px">Obra</span>
-      <input type="range" class="cmp-range" id="cmp-range" min="0" max="100" value="50" aria-label="Deslizar entre render y obra">
+<section class="feature" id="fidelidad" style="padding-top:0">
+  <div class="wrap">
+    <div class="feat-head">
+      <span class="feat-num">03</span>
+      <div><p class="kicker">Fidelidad de obra</p><h2 style="margin-top:10px">Del render a la obra, sin traducciones.</h2></div>
     </div>
-    <p class="cmp-note">Ejemplo ilustrativo; aquí van pares reales de render y foto de obra.</p>
-    <footer class="folio"><span>Fidelidad</span><b></b></footer>
-  </section>
+    <div class="ba">
+      <div>
+        <blockquote>Lo que ves es lo que se construye.</blockquote>
+        <ul class="checks">
+          <li><span>i.</span>El recorrido sale del mismo modelo que los planos, las cantidades y el presupuesto.</li>
+          <li><span>ii.</span>Apruebas cada espacio, material y color en pantalla antes de iniciar obra.</li>
+          <li><span>iii.</span>En cada etapa de obra te mostramos el comparativo render contra foto.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="cmp" aria-label="Comparativo render contra obra">
+          <div class="cmp-layer cmp-bottom" aria-hidden="true"><svg viewBox="0 0 200 120"><path d="M20 110 V45 H110 V25 H180 V110 Z"/><path d="M30 60 h60 v35 h-60z M120 35 h50 v28 h-50z M125 72 h20 v38 h-20z"/></svg></div>
+          <div class="cmp-layer cmp-top" id="cmp-top" aria-hidden="true"><svg viewBox="0 0 200 120"><path d="M20 110 V45 H110 V25 H180 V110 Z"/><path d="M30 60 h60 v35 h-60z M120 35 h50 v28 h-50z M125 72 h20 v38 h-20z M0 110 H200"/></svg></div>
+          <span class="cmp-line" id="cmp-line"></span>
+          <span class="cmp-tag" style="left:12px">Render aprobado</span>
+          <span class="cmp-tag" style="right:12px">Obra terminada</span>
+          <input type="range" class="cmp-range" id="cmp-range" min="0" max="100" value="50" aria-label="Deslizar entre render y obra">
+        </div>
+        <p class="cmp-note">Ejemplo ilustrativo; aquí van pares reales de render y foto de obra.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-  <section class="pg" data-id="metodo" aria-label="Cómo trabajamos">
-    <div class="sec-head"><p class="kicker">04 · Cómo trabajamos</p><h2>De tu idea a la llave.</h2></div>
+<section class="feature" id="metodo" style="padding-top:0">
+  <div class="wrap">
+    <div class="feat-head">
+      <span class="feat-num">04</span>
+      <div><p class="kicker">Cómo trabajamos</p><h2 style="margin-top:10px">De tu idea a la llave, sin sorpresas.</h2></div>
+    </div>
     <div class="steps">
-      <div class="step"><span class="n">i.</span><div><h3>Escuchamos tu sueño</h3><p>Terreno, necesidades, estilo y presupuesto tope.</p></div></div>
-      <div class="step"><span class="n">ii.</span><div><h3>Lo recorres en 3D y VR</h3><p>Ajustamos el diseño contigo hasta que te veas viviendo ahí.</p></div></div>
-      <div class="step"><span class="n">iii.</span><div><h3>Números antes de obra</h3><p>Presupuesto por partidas y explosión de insumos.</p></div></div>
-      <div class="step"><span class="n">iv.</span><div><h3>Queda igual</h3><p>Obra con seguimiento y comparativo render contra foto.</p></div></div>
+      <div class="step"><span class="n">i.</span><h3>Escuchamos tu sueño</h3><p>Terreno, necesidades, estilo y presupuesto tope. Salimos con un programa claro.</p></div>
+      <div class="step"><span class="n">ii.</span><h3>Lo recorres en 3D y VR</h3><p>Ajustamos el diseño contigo, en recorrido realista, hasta que te veas viviendo ahí.</p></div>
+      <div class="step"><span class="n">iii.</span><h3>Números antes de obra</h3><p>Presupuesto por partidas y explosión de insumos con cantidades exactas.</p></div>
+      <div class="step"><span class="n">iv.</span><h3>Queda igual</h3><p>Obra con seguimiento y comparativo render contra foto en cada etapa.</p></div>
     </div>
-    <footer class="folio"><span>Método</span><b></b></footer>
-  </section>
+  </div>
+</section>
 
-  <section class="pg" data-id="faq" aria-label="Preguntas frecuentes">
-    <div class="sec-head"><p class="kicker">05 · Preguntas</p><h2>Antes de empezar.</h2></div>
+<section class="feature" id="preguntas" style="padding-top:0">
+  <div class="wrap">
+    <div class="feat-head">
+      <span class="feat-num">05</span>
+      <div><p class="kicker">Preguntas frecuentes</p><h2 style="margin-top:10px">Antes de empezar.</h2></div>
+    </div>
     <div class="faq">
-      <details><summary>¿El prototipo ya es mi proyecto?</summary><p>No. Es un modelo automático para ver qué cabe en tu terreno con tu presupuesto. Tu proyecto lo diseña el arquitecto contigo.</p></details>
-      <details><summary>¿Qué tan preciso es el costo?</summary><p>Es una estimación paramétrica de ±15 %. En el proyecto ejecutivo te entregamos el presupuesto por partidas.</p></details>
-      <details><summary>¿Necesito visor de realidad virtual?</summary><p>No. Los recorridos se ven en celular o computadora; en la sesión de diseño te prestamos el visor.</p></details>
-      <details><summary>¿Y si no tengo terreno?</summary><p>Te ayudamos a buscarlo con Alta Inmobiliaria, cuidando que le quede al proyecto.</p></details>
-      <details><summary>¿También diseñan negocios?</summary><p>Sí: locales, consultorios, oficinas y restaurantes, con el mismo método.</p></details>
+      <details><summary>¿El prototipo de la página ya es mi proyecto?</summary><p>No. Es un modelo automático para que veas qué cabe en tu terreno con tu presupuesto. Tu proyecto lo diseña el arquitecto contigo, con distribución, fachada y materiales a tu medida.</p></details>
+      <details><summary>¿Qué tan preciso es el costo?</summary><p>Es una estimación paramétrica con costos por m² de la región y una variación esperada de ±15 %. En el proyecto ejecutivo te entregamos el presupuesto por partidas con precios unitarios.</p></details>
+      <details><summary>¿Necesito un visor de realidad virtual?</summary><p>No. Los recorridos se ven en celular o computadora. En la sesión de diseño te prestamos el visor para que camines tu casa a escala real.</p></details>
+      <details><summary>¿Y si todavía no tengo terreno?</summary><p>Te ayudamos a buscarlo con Alta Inmobiliaria, cuidando que el terreno le quede al proyecto que quieres.</p></details>
+      <details><summary>¿También diseñan negocios?</summary><p>Sí: locales comerciales, consultorios, oficinas y restaurantes, con el mismo método de recorrido, presupuesto y materiales.</p></details>
     </div>
-    <footer class="folio"><span>Preguntas</span><b></b></footer>
-  </section>
+  </div>
+</section>
+</main>
 
-  <section class="pg pg-dark" data-id="contacto" aria-label="Contacto">
-    <p class="kicker">06 · Contacto</p>
-    <h2 class="contact-big">Hagamos tu casa.</h2>
-    <div class="contact-lines">
-      <p style="color:#BDB8AF">Cuéntanos de tu terreno y de tu presupuesto. Te respondemos por WhatsApp y agendamos tu sesión de diseño con recorrido virtual.</p>
-      <a class="btn btn-red" id="contact-wa" href="#" target="_blank" rel="noopener" style="justify-self:start">Escribir por WhatsApp</a>
-      <p class="cta-folio">WhatsApp <span id="contact-num"></span></p>
-      <p style="color:#BDB8AF">¿Sin terreno? Alta Inmobiliaria te ayuda a encontrarlo.</p>
+<div class="ar-ov" id="ar-ov" hidden role="dialog" aria-modal="true" aria-labelledby="ar-title">
+  <div class="ar-card">
+    <div class="ar-head">
+      <div><p class="kicker">Realidad aumentada</p><h3 id="ar-title">Tu casa en tu terreno</h3></div>
+      <button type="button" class="ar-close" id="ar-close" aria-label="Cerrar">✕</button>
     </div>
-    <footer class="folio"><span>Contacto</span><b></b></footer>
-  </section>
-
-  <section class="pg colofon" data-id="colofon" aria-label="Colofón">
-    <p class="kicker">Colofón</p>
-    <h2 style="font:italic 500 max(26px,calc(9 * var(--u)))/.95 var(--didone)">Liberache Nº 01</h2>
-    <dl>
-      <div><dt>Edición</dt><dd>Noviembre 2026 · Tepic y Xalisco, Nayarit</dd></div>
-      <div><dt>Dirección de proyecto</dt><dd>Arq. Rigo</dd></div>
-      <div><dt>Estudio</dt><dd>Estudio Liberache · diseño y construcción</dd></div>
-      <div><dt>Recorridos</dt><dd>D5 Render</dd></div>
-      <div><dt>Bienes raíces</dt><dd>Alta Inmobiliaria</dd></div>
-    </dl>
-    <p class="how">Los costos del prototipo son estimaciones paramétricas y no incluyen terreno, licencias ni honorarios de proyecto.</p>
-    <footer class="folio"><span>Colofón</span><b></b></footer>
-  </section>
-
-  <section class="pg pg-dark pg-back" data-id="back" aria-label="Contraportada">
-    <span class="back-mark">LIBERACHE</span>
-    <p class="back-quote">Casas que se recorren antes de existir.</p>
-    <div class="back-foot">
-      <span>Arquitectura · Interiorismo · Construcción</span>
-      <span>Tepic &amp; Xalisco, Nayarit</span>
-      <button type="button" class="btn btn-paper" id="to-cover">Volver a la portada ↺</button>
+    <div class="seg ar-modes">
+      <label><input type="radio" name="armode" id="armode-real" value="real" checked><span>Tamaño real, en el terreno</span></label>
+      <label><input type="radio" name="armode" id="armode-mesa" value="mesa"><span>Maqueta sobre la mesa</span></label>
     </div>
-  </section>
+    <div class="ar-stage" id="ar-stage"><p class="ar-status" id="ar-status">Preparando…</p></div>
+    <button type="button" class="btn btn-red" id="ar-go" disabled>Abrir la cámara</button>
+    <p class="hint" id="ar-help"></p>
+  </div>
 </div>
 
 <div class="gen-ov" id="gen-overlay" hidden role="status" aria-live="polite">
   <div class="gen-card">
-    <p class="kicker" style="font-size:.72rem">Generando tu prototipo</p>
+    <p class="kicker">Generando tu prototipo</p>
     <ol id="gen-steps"></ol>
   </div>
 </div>
+
+<footer>
+  <div class="wrap">
+    <span class="foot-mark">LIBERACHE</span>
+    <p>Estudio de diseño y construcción · Tepic y Xalisco, Nayarit</p>
+    <p>Dirección: Arq. Rigo</p>
+  </div>
+</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script>
@@ -1565,34 +1544,25 @@ if (typeof module !== 'undefined') module.exports = { CONFIG: CONFIG, program: p
 </script>
 <script>
 /* ============================================================
-   REVISTA HOJEABLE: portada → doble página → índice → secciones
+   REVISTA: cada proyecto es una página; al pasarla cambia el recorrido D5
    ============================================================ */
 (function () {
   var $ = function (s, r) { return (r || document).querySelector(s); };
-  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
-  var store = $('#store'), book = $('#book'), slotL = $('#slotL'), slotR = $('#slotR');
-  var leaf = $('#leaf'), lf = $('#leafFront'), lb = $('#leafBack');
+  var list = CONFIG.proyectos, cur = 0, busy = false, embedBlocked = false;
+  var spread = $('#spread'), frame = $('#tour-frame'), sheet = $('#turn-sheet');
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var DUR = reduce ? 0 : 760;
   var pad2 = function (n) { return (n < 10 ? '0' : '') + n; };
-  var blocked = false, busy = false;
   function track(name, data) {
     try { (window.dataLayer = window.dataLayer || []).push(Object.assign({ event: name }, data || {})); } catch (e) {}
     try { if (window.fbq) window.fbq('trackCustom', name, data || {}); } catch (e) {}
   }
 
-  /* ---- portada con render generado por el motor 3D ---- */
-  window.onCoverRender = function (url) {
-    if (!url) return;
-    var img = $('#cover-img');
-    img.style.backgroundImage = 'url(' + url + ')';
-    img.classList.add('has-photo');
-  };
-
-  /* ---- páginas ---- */
-  var P = {};
-  $$('.pg', store).forEach(function (el) { P[el.dataset.id] = el; });
-  var projects = CONFIG.proyectos;
+  // Si el navegador bloquea incrustar el recorrido (p. ej. una vista previa con política estricta),
+  // se queda la portada con el botón para abrirlo en pantalla completa.
+  document.addEventListener('securitypolicyviolation', function (e) {
+    var d = (e.effectiveDirective || e.violatedDirective || '');
+    if (d.indexOf('frame') === 0 || d.indexOf('child') === 0) { embedBlocked = true; showPoster(list[cur], true); }
+  });
 
   function art(i) {
     var v = [
@@ -1603,265 +1573,89 @@ if (typeof module !== 'undefined') module.exports = { CONFIG: CONFIG, program: p
     return '<svg viewBox="0 0 250 160" aria-hidden="true"><path d="' + v + '"/><line x1="0" y1="150" x2="250" y2="150"/></svg>';
   }
 
-  projects.forEach(function (p, i) {
-    var t = document.createElement('section');
-    t.className = 'pg pg-proj'; t.dataset.id = 'p' + i + 't';
-    var rows = [['Ubicación', p.lugar], ['Programa', p.tipo], ['Superficie', p.superficie], ['Niveles', p.niveles], ['Año', p.anio], ['Visualización', 'D5 Render · 360°']]
-      .filter(function (r) { return r[1]; })
-      .map(function (r) { return '<div><dt>' + r[0] + '</dt><dd>' + r[1] + '</dd></div>'; }).join('');
-    t.innerHTML = '<p class="kicker">Recorridos · ' + pad2(i + 1) + ' de ' + pad2(projects.length) + '</p>'
-      + '<h2 class="proj-title">' + p.nombre + '</h2>'
-      + '<p class="proj-head">' + (p.titular || '') + '</p>'
-      + '<p class="proj-dek">' + (p.entrada || '') + '</p>'
-      + '<dl class="specs">' + rows + '</dl>'
-      + '<div class="proj-actions">' + (p.d5 ? '<a class="btn btn-ink" href="' + p.d5 + '" target="_blank" rel="noopener" data-full="' + i + '">Pantalla completa ↗</a>' : '') + '</div>'
-      + '<p class="proj-hint">Arrastra dentro del recorrido para mirar alrededor →</p>'
-      + '<footer class="folio"><span>Liberache · Recorridos</span><b></b></footer>';
-    store.appendChild(t); P[t.dataset.id] = t;
-
-    var v = document.createElement('section');
-    v.className = 'pg pg-tour no-flip'; v.dataset.id = 'p' + i + 'v';
-    v.innerHTML = '<div class="tour-frame"><div class="tour-poster"><div class="poster-inner">'
-      + '<span class="poster-num">' + pad2(i + 1) + '</span><div class="poster-art">' + art(i) + '</div>'
-      + '<p class="poster-msg"></p><a class="btn btn-paper poster-open" href="' + (p.d5 || '#') + '" target="_blank" rel="noopener" hidden>Abrir recorrido ↗</a>'
-      + '</div></div></div>'
-      + '<div class="tour-cap"><em>' + p.nombre + '</em><span>' + (p.d5 ? 'Recorrido 360° · D5 Render' : 'Recorrido en producción') + '</span></div>';
-    var msg = v.querySelector('.poster-msg'), open = v.querySelector('.poster-open'), poster = v.querySelector('.tour-poster');
-    v._show = function () {
-      poster.hidden = false;
-      if (!p.d5) { msg.textContent = 'Recorrido en producción'; return; }
-      if (blocked) { msg.textContent = 'Esta vista no permite incrustar el recorrido.'; open.hidden = false; return; }
-      if (v.querySelector('iframe')) return;
-      msg.textContent = 'Cargando recorrido…';
-      var f = document.createElement('iframe');
-      f.src = p.d5; f.title = 'Recorrido virtual ' + p.nombre;
-      f.setAttribute('allow', 'fullscreen; xr-spatial-tracking; gyroscope; accelerometer; autoplay');
-      f.setAttribute('allowfullscreen', '');
-      f.addEventListener('load', function () { if (!blocked) poster.hidden = true; });
-      v.querySelector('.tour-frame').insertBefore(f, poster);
-      track('recorrido_visto', { proyecto: i + 1 });
-    };
-    v._hide = function () {
-      var f = v.querySelector('iframe'); if (f) f.remove();
-      poster.hidden = false; msg.textContent = p.d5 ? '' : 'Recorrido en producción';
-    };
-    store.appendChild(v); P[v.dataset.id] = v;
-  });
-  document.addEventListener('securitypolicyviolation', function (e) {
-    var d = e.effectiveDirective || e.violatedDirective || '';
-    if (d.indexOf('frame') === 0 || d.indexOf('child') === 0) {
-      blocked = true;
-      $$('.pg-tour').forEach(function (v) { var f = v.querySelector('iframe'); if (f) f.remove(); if (v.parentNode !== store) v._show(); });
-    }
-  });
-
-  /* ---- orden de páginas y pliegos ---- */
-  var order = ['cover', 'indice', 'rec'];
-  projects.forEach(function (p, i) { order.push('p' + i + 't', 'p' + i + 'v'); });
-  order = order.concat(['cfgL', 'cfgR', 'fidL', 'fidR', 'metodo', 'faq', 'contacto', 'colofon', 'back']);
-  var spreads = [{ L: null, R: 'cover' }];
-  for (var k = 1; k < order.length - 1; k += 2) spreads.push({ L: order[k], R: order[k + 1] });
-  spreads.push({ L: 'back', R: null });
-  var pageNo = {}; order.forEach(function (id, i) { pageNo[id] = i + 1; });
-  function spreadOf(id) { for (var i = 0; i < spreads.length; i++) if (spreads[i].L === id || spreads[i].R === id) return i; return 0; }
-
-  order.forEach(function (id) {
-    var el = P[id];
-    var f = el.querySelector('.folio b'); if (f) f.textContent = pageNo[id];
-    if (id !== 'cover' && id !== 'back') {
-      var l = document.createElement('button'); l.type = 'button'; l.className = 'edge edge-l'; l.setAttribute('aria-label', 'Página anterior'); el.appendChild(l);
-      var r = document.createElement('button'); r.type = 'button'; r.className = 'edge edge-r'; r.setAttribute('aria-label', 'Página siguiente'); el.appendChild(r);
-    }
-  });
-
-  /* índice y referencias de página */
-  var sections = [
-    { n: '01', label: 'Recorridos', id: 'rec', subs: projects.map(function (p, i) { return { label: p.nombre, id: 'p' + i + 't' }; }) },
-    { n: '02', label: 'Diseña la tuya', id: 'cfgL', note: 'Prototipo con 3D, planos y presupuesto' },
-    { n: '03', label: 'Fidelidad de obra', id: 'fidL' },
-    { n: '04', label: 'Cómo trabajamos', id: 'metodo' },
-    { n: '05', label: 'Preguntas frecuentes', id: 'faq' },
-    { n: '06', label: 'Contacto', id: 'contacto' }
-  ];
-  $('#idx').innerHTML = sections.map(function (s) {
-    var subs = (s.subs || []).map(function (x) { return '<li><button type="button" class="idx-sub" data-go="' + x.id + '"><span>' + x.label + '</span><i></i><b>' + pageNo[x.id] + '</b></button></li>'; }).join('');
-    return '<li><button type="button" class="idx-item" data-go="' + s.id + '"><em>' + s.n + '</em><span>' + s.label + (s.note ? '<small>' + s.note + '</small>' : '') + '</span><i></i><b>' + pageNo[s.id] + '</b></button>' + (subs ? '<ol>' + subs + '</ol>' : '') + '</li>';
-  }).join('');
-  $('#rec-list').innerHTML = projects.map(function (p, i) {
-    return '<li><button type="button" data-go="p' + i + 't"><em>' + pad2(i + 1) + '</em><span>' + p.nombre + '<small>' + p.lugar + ' · ' + p.tipo + '</small></span><b>p. ' + pageNo['p' + i + 't'] + '</b></button></li>';
-  }).join('');
-  $$('[data-pageref]').forEach(function (el) { el.textContent = 'p. ' + pageNo[el.dataset.pageref]; });
-
-  /* contacto */
-  var wa = $('#contact-wa');
-  if (wa) {
-    wa.href = 'https://wa.me/' + CONFIG.whatsapp + '?text=' + encodeURIComponent('Hola, vi la revista de ' + CONFIG.estudio + ' y quiero diseñar mi proyecto con recorrido virtual.');
-    $('#contact-num').textContent = '+' + CONFIG.whatsapp;
-    wa.addEventListener('click', function () { track('cta_whatsapp', { origen: 'revista_contacto' }); });
+  function showPoster(p, blocked) {
+    var poster = $('#tour-poster');
+    poster.hidden = false;
+    var msg = !p.d5 ? 'Recorrido en producción'
+      : blocked ? 'Esta vista no permite incrustar el recorrido. Ábrelo en pantalla completa.'
+      : 'Cargando recorrido…';
+    $('#poster-msg').textContent = msg;
+    $('#poster-open').hidden = !p.d5 || !blocked;
+    $('#poster-open').href = p.d5 || '#';
   }
 
-  /* ---- colocación ---- */
-  var single = false, cs = 0, ci = 0;
-  function put(slot, id) {
-    while (slot.firstChild) store.appendChild(slot.firstChild);
-    if (id) slot.appendChild(P[id]);
-  }
-  function visibleIds() { return single ? [order[ci]] : [spreads[cs].L, spreads[cs].R].filter(Boolean); }
-  var shown = {};
-  function settle() {
-    var vis = visibleIds();
-    Object.keys(shown).forEach(function (id) { if (vis.indexOf(id) < 0) { if (P[id]._hide) P[id]._hide(); delete shown[id]; } });
-    vis.forEach(function (id) { if (!shown[id]) { shown[id] = 1; if (P[id]._show) P[id]._show(); } });
-    var total = order.length;
-    var label;
-    if (single) label = ci === 0 ? 'Portada' : ci === total - 1 ? 'Contraportada' : (ci + 1) + ' / ' + total;
-    else { var S = spreads[cs]; label = cs === 0 ? 'Portada' : cs === spreads.length - 1 ? 'Contraportada' : pageNo[S.L] + '–' + pageNo[S.R] + ' / ' + total; }
-    $('#ctl-count').textContent = label;
-    var atStart = single ? ci === 0 : cs === 0, atEnd = single ? ci === total - 1 : cs === spreads.length - 1;
-    $('#ctl-prev').disabled = atStart; $('#ctl-next').disabled = atEnd;
-    book.classList.toggle('is-closed-front', !single && cs === 0);
-    book.classList.toggle('is-closed-back', !single && cs === spreads.length - 1);
-    $('#ctl-hint').hidden = !atStart;
-    document.body.classList.toggle('at-cover', atStart);
-  }
-  function placeStatic() {
-    put(slotL, null); put(slotR, null);
-    if (single) put(slotR, order[ci]);
-    else { put(slotL, spreads[cs].L); put(slotR, spreads[cs].R); }
-    settle();
+  function loadTour(p) {
+    var old = frame.querySelector('iframe');
+    if (old) old.remove();
+    $('#poster-art').innerHTML = art(cur);
+    $('#poster-num').textContent = pad2(cur + 1);
+    showPoster(p, embedBlocked);
+    if (!p.d5 || embedBlocked) return;
+    var f = document.createElement('iframe');
+    f.src = p.d5;
+    f.title = 'Recorrido virtual ' + p.nombre;
+    f.setAttribute('allow', 'fullscreen; xr-spatial-tracking; gyroscope; accelerometer; autoplay');
+    f.setAttribute('allowfullscreen', '');
+    f.addEventListener('load', function () { if (!embedBlocked) $('#tour-poster').hidden = true; });
+    frame.insertBefore(f, frame.firstChild);
   }
 
-  function layout() {
-    var want = window.innerWidth < 860 || window.innerWidth / window.innerHeight < 1.15;
-    if (want !== single) {
-      if (want) { var S = spreads[cs]; ci = order.indexOf(S.R || S.L); }
-      else { cs = spreadOf(order[ci]); }
-      single = want;
-      book.classList.toggle('single', single);
-      placeStatic();
-    }
-    var pw = single ? window.innerWidth : window.innerWidth / 2, ph = window.innerHeight;
-    book.style.setProperty('--pw', Math.floor(pw) + 'px');
-    book.style.setProperty('--ph', Math.floor(ph) + 'px');
+  function fill(i) {
+    var p = list[i];
+    $('#pg-kicker').textContent = 'Recorrido ' + pad2(i + 1) + ' / ' + pad2(list.length) + ' · ' + p.tipo;
+    $('#pg-title').textContent = p.nombre;
+    $('#pg-head').textContent = p.titular || '';
+    $('#pg-dek').textContent = p.entrada || '';
+    var rows = [['Ubicación', p.lugar], ['Programa', p.tipo], ['Superficie', p.superficie], ['Niveles', p.niveles], ['Año', p.anio], ['Visualización', 'D5 Render · 360°']];
+    $('#pg-specs').innerHTML = rows.filter(function (r) { return r[1]; }).map(function (r) { return '<div><dt>' + r[0] + '</dt><dd>' + r[1] + '</dd></div>'; }).join('');
+    var open = $('#pg-open');
+    open.hidden = !p.d5; open.href = p.d5 || '#';
+    $('#pg-folio').textContent = pad2(i + 1);
+    $('#tour-cap').textContent = p.d5 ? p.nombre + ' · recorrido 360° en D5 Render. Arrastra para mirar alrededor.' : p.nombre + ' · recorrido en producción.';
+    Array.prototype.forEach.call(document.querySelectorAll('.pg-tab'), function (b, k) { b.setAttribute('aria-current', k === i ? 'page' : 'false'); });
+    $('#pg-prev').disabled = i === 0; $('#pg-next').disabled = i === list.length - 1;
+    loadTour(p);
   }
 
-  /* ---- pasar página ---- */
-  function hideLeaving(ids) { ids.forEach(function (id) { if (id && shown[id]) { if (P[id]._hide) P[id]._hide(); delete shown[id]; } }); }
-  function animateLeaf(cls, from, to, done, op0, op1) {
-    leaf.className = 'leaf ' + cls;
-    leaf.style.transition = 'none';
-    leaf.style.transform = 'rotateY(' + from + 'deg)';
-    leaf.style.opacity = op0 == null ? 1 : op0;
-    leaf.hidden = false;
-    void leaf.offsetWidth;
-    leaf.style.transition = '';
-    leaf.style.transform = 'rotateY(' + to + 'deg)';
-    leaf.style.opacity = op1 == null ? 1 : op1;
-    setTimeout(function () {
-      done();
-      put(lf, null); put(lb, null);
-      leaf.hidden = true; leaf.style.transform = ''; leaf.style.opacity = '';
-      busy = false; settle();
-    }, DUR + 30);
-  }
-  function go(t, src) {
-    if (busy) return;
-    if (single) {
-      if (t < 0 || t >= order.length || t === ci) return;
-      busy = true;
-      var cur = order[ci], nxt = order[t];
-      track('revista_pagina', { pagina: t + 1, via: src || 'flecha' });
-      hideLeaving([cur]);
-      if (t > ci) { put(lf, cur); put(slotR, nxt); ci = t; animateLeaf('fwd', 0, -180, function () {}); }
-      else { put(lf, nxt); ci = t; animateLeaf('fwd', -180, 0, function () { put(slotR, nxt); }); }
-      return;
-    }
-    if (t < 0 || t >= spreads.length || t === cs) return;
+  function go(i, dir) {
+    if (busy || i === cur || i < 0 || i >= list.length) return;
+    track('revista_pagina', { pagina: i + 1 });
+    if (reduce) { cur = i; fill(i); return; }
     busy = true;
-    var S = spreads[cs], T = spreads[t], fwd = t > cs;
-    track('revista_pagina', { pagina: pageNo[T.L || T.R], via: src || 'flecha' });
-    if (cs === 0) track('revista_abierta', {});
-    hideLeaving([S.L, S.R]);
-    var last = spreads.length - 1;
-    var setClosed = function (front, back) { book.classList.toggle('is-closed-front', front); book.classList.toggle('is-closed-back', back); };
-    if (t === 0) {                       // cerrar la revista: la portada regresa
-      put(lf, 'cover'); cs = t;
-      animateLeaf('cover-out', -100, 0, function () { setClosed(true, false); put(slotL, null); put(slotR, 'cover'); }, 0, 1);
-      return;
-    }
-    if (cs === 0) {                      // abrir la portada a pantalla completa
-      put(lf, 'cover'); setClosed(false, false); put(slotL, T.L); put(slotR, T.R); cs = t;
-      animateLeaf('cover-out', 0, -100, function () {}, 1, 0);
-      return;
-    }
-    if (t === last) {                    // llegar a la contraportada
-      put(lf, 'back'); cs = t;
-      animateLeaf('back-in', 100, 0, function () { setClosed(false, true); put(slotR, null); put(slotL, 'back'); }, 0, 1);
-      return;
-    }
-    if (cs === last) {                   // dejar la contraportada
-      put(lf, 'back'); setClosed(false, false); put(slotL, T.L); put(slotR, T.R); cs = t;
-      animateLeaf('back-in', 0, 100, function () {}, 1, 0);
-      return;
-    }
-    if (fwd) {
-      put(lf, S.R); put(lb, T.L); put(slotR, T.R);
-      cs = t;
-      book.classList.toggle('is-closed-front', false);
-      book.classList.toggle('is-closed-back', t === spreads.length - 1);
-      animateLeaf('fwd', 0, -180, function () { put(slotL, T.L); });
-    } else {
-      put(lf, S.L); put(lb, T.R); put(slotL, T.L);
-      cs = t;
-      book.classList.toggle('is-closed-back', false);
-      book.classList.toggle('is-closed-front', t === 0);
-      animateLeaf('bwd', 0, 180, function () { put(slotR, T.R); });
-    }
+    sheet.className = 'turn-sheet in-' + (dir > 0 ? 'next' : 'prev');
+    setTimeout(function () {
+      cur = i; fill(i);
+      sheet.className = 'turn-sheet out-' + (dir > 0 ? 'next' : 'prev');
+      setTimeout(function () { sheet.className = 'turn-sheet'; busy = false; }, 420);
+    }, 420);
   }
-  function next(src) { go((single ? ci : cs) + 1, src); }
-  function prev(src) { go((single ? ci : cs) - 1, src); }
-  function goId(id, src) { go(single ? order.indexOf(id) : spreadOf(id), src); }
 
-  /* clics: hoja derecha avanza, hoja izquierda regresa */
-  var interactive = 'a,button,input,label,select,textarea,summary,details,canvas,iframe,.viewer,.no-flip-zone';
-  book.addEventListener('click', function (e) {
-    var go2 = e.target.closest('[data-go]');
-    if (go2) { goId(go2.dataset.go, 'indice'); track('revista_indice', { destino: go2.dataset.go }); return; }
-    var edge = e.target.closest('.edge');
-    if (edge) { if (edge.classList.contains('edge-r')) next('borde'); else prev('borde'); return; }
-    if (busy || e.target.closest(interactive)) return;
-    var page = e.target.closest('.pg');
-    if (!page || page.classList.contains('no-flip')) return;
-    if (single) {
-      var r = page.getBoundingClientRect();
-      if (e.clientX - r.left > r.width * 0.4) next('hoja'); else prev('hoja');
-    } else if (page.parentNode === slotR) next('hoja');
-    else if (page.parentNode === slotL) prev('hoja');
+  $('#pg-tabs').innerHTML = list.map(function (p, i) {
+    return '<button type="button" class="pg-tab" data-i="' + i + '"><span class="pg-tab-n">' + pad2(i + 1) + '</span><span class="pg-tab-t">' + p.nombre + '</span></button>';
+  }).join('');
+  Array.prototype.forEach.call(document.querySelectorAll('.pg-tab'), function (b) {
+    b.addEventListener('click', function () { var i = +b.dataset.i; go(i, i > cur ? 1 : -1); });
   });
-  $('#ctl-prev').addEventListener('click', function () { prev('control'); });
-  $('#ctl-next').addEventListener('click', function () { next('control'); });
-  $('#ctl-index').addEventListener('click', function () { goId('indice', 'control'); });
-  $('#to-cover').addEventListener('click', function (e) { e.stopPropagation(); go(0, 'contraportada'); });
+  $('#pg-prev').addEventListener('click', function () { go(cur - 1, -1); });
+  $('#pg-next').addEventListener('click', function () { go(cur + 1, 1); });
+  $('#pg-open').addEventListener('click', function () { track('recorrido_pantalla_completa', { pagina: cur + 1 }); });
   document.addEventListener('keydown', function (e) {
-    var t = e.target;
-    if (t.closest && t.closest('input,textarea,select,.viewer')) return;
-    if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); next('teclado'); }
-    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev('teclado'); }
+    var t = e.target.tagName;
+    if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || e.target.closest('#viewer')) return;
+    var r = spread.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > window.innerHeight) return;
+    if (e.key === 'ArrowRight') go(cur + 1, 1);
+    if (e.key === 'ArrowLeft') go(cur - 1, -1);
   });
-  var sx = null, sy = null;
-  book.addEventListener('touchstart', function (e) { if (e.target.closest('.viewer,iframe,input')) { sx = null; return; } sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
-  book.addEventListener('touchend', function (e) {
+  var sx = null;
+  var page = $('#page-left');
+  page.addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; }, { passive: true });
+  page.addEventListener('touchend', function (e) {
     if (sx == null) return;
-    var dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; sx = null;
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { if (dx < 0) next('deslizar'); else prev('deslizar'); }
+    var dx = e.changedTouches[0].clientX - sx; sx = null;
+    if (Math.abs(dx) > 50) go(cur + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
   });
-
-  // en celular, al generar el prototipo se pasa sola a la hoja de resultados
-  window.addEventListener('prototipo-generado', function () { if (single && order[ci] === 'cfgL') next('prototipo'); });
-  var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(layout, 80); });
-  single = !(window.innerWidth < 860);   // fuerza la primera colocación
-  layout();
-  track('revista_vista', {});
+  fill(0);
 })();
 
 </script>
@@ -1887,6 +1681,8 @@ function Viewer3D(container, canvas, hud) {
   scene.fog = new T.Fog(0xdde3e6, 60, 160);
   var camera = new T.PerspectiveCamera(40, 1, 0.05, 400);
   camera.rotation.order = 'YXZ';
+  var rig = new T.Group();   // soporte de la cámara: se mueve en VR y en visor de cartón
+  scene.add(rig); rig.add(camera);
 
   var hemi = new T.HemisphereLight(0xffffff, 0x8d877b, 0.62);
   scene.add(hemi);
@@ -2319,11 +2115,16 @@ function Viewer3D(container, canvas, hud) {
     }
     var dx = e.clientX - p.x, dy = e.clientY - p.y;
     p.x = e.clientX; p.y = e.clientY;
-    if (self.mode === 'walk') { walker.yaw -= dx * 0.005; walker.pitch = clamp(walker.pitch - dy * 0.004, -1.1, 1.1); }
+    p.moved = (p.moved || 0) + Math.abs(dx) + Math.abs(dy);
+    if (self.mode === 'walk' || self.mode === 'cardboard') { walker.yaw -= dx * 0.005; walker.pitch = clamp(walker.pitch - dy * 0.004, -1.1, 1.1); }
     else { orbit.theta -= dx * 0.006; orbit.phi = clamp(orbit.phi - dy * 0.006, 0.2, 1.48); }
     self.dirty = true;
   });
-  function up(e) { delete pointers[e.pointerId]; lastPinch = 0; }
+  function up(e) {
+    var p = pointers[e.pointerId];
+    if (self.mode === 'cardboard' && p && (p.moved || 0) < 10 && e.type === 'pointerup') nextTour(1);
+    delete pointers[e.pointerId]; lastPinch = 0;
+  }
   canvas.addEventListener('pointerup', up);
   canvas.addEventListener('pointercancel', up);
   canvas.addEventListener('wheel', function (e) {
@@ -2356,6 +2157,155 @@ function Viewer3D(container, canvas, hud) {
     return url;
   };
 
+
+  /* ============ recorrido de piezas para VR / visor de cartón ============ */
+  var tour = [], tourIdx = 0;
+  function buildTour() {
+    tour = [];
+    P.levels.forEach(function (lv) {
+      lv.rooms.forEach(function (r) {
+        if (r.isStair || r.area < 2.5) return;
+        // punto de vista: cerca de la puerta, mirando hacia el centro de la pieza
+        var cx = (r.x0 + r.x1) / 2, cz = (r.y0 + r.y1) / 2;
+        tour.push({ x: cx, z: cz, level: lv.k, name: r.name, room: r });
+      });
+    });
+  }
+  function goTour(i) {
+    if (!tour.length) buildTour();
+    tourIdx = (i + tour.length) % tour.length;
+    var t = tour[tourIdx], r = t.room;
+    // retrocede hacia un costado para ver la pieza completa
+    var bx = r.x0 + Math.min(0.7, r.w * 0.25), bz = r.y0 + Math.min(0.7, r.h * 0.25);
+    walker.x = bx; walker.z = bz; walker.level = t.level;
+    walker.yaw = Math.atan2(-(t.x - bx), -(t.z - bz));
+    walker.pitch = -0.08;
+    if (self.onTour) self.onTour(t.name + (t.room.isHall ? '' : ' · ' + t.room.area.toFixed(1) + ' m²'), tourIdx + 1, tour.length);
+    self.dirty = true;
+  }
+  function nextTour(d) { goTour(tourIdx + (d || 1)); }
+  this.nextTour = nextTour;
+
+  /* ---- visor de cartón: pantalla dividida + giroscopio del teléfono ---- */
+  var cb = { has: false, a: 0, b: 0, g: 0, yawOff: null };
+  var zee = new T.Vector3(0, 0, 1), eul = new T.Euler(), qa = new T.Quaternion(), q1 = new T.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));
+  function onOrient(e) { if (e.alpha == null) return; cb.has = true; cb.a = e.alpha; cb.b = e.beta; cb.g = e.gamma; }
+  function devQuat(q) {
+    var d = Math.PI / 180;
+    var orient = ((screen.orientation && screen.orientation.angle) || window.orientation || 0) * d;
+    eul.set(cb.b * d, cb.a * d, -cb.g * d, 'YXZ');
+    q.setFromEuler(eul); q.multiply(q1); q.multiply(qa.setFromAxisAngle(zee, -orient));
+  }
+  this.enterCardboard = function () {
+    if (!P) return;
+    self.prevMode = self.mode === 'cardboard' ? 'walk' : self.mode;
+    self.mode = 'cardboard';
+    cb.has = false; cb.yawOff = null;
+    window.addEventListener('deviceorientation', onOrient);
+    levelGroups.forEach(function (g) { g.visible = true; }); if (roofGroup) roofGroup.visible = true;
+    amb.intensity = 0.42; hemi.intensity = 0.7; camera.fov = 80;
+    buildTour(); goTour(0);
+    container.classList.add('vr-on');
+    resize();
+  };
+  this.exitCardboard = function () {
+    window.removeEventListener('deviceorientation', onOrient);
+    container.classList.remove('vr-on');
+    renderer.setScissorTest(false);
+    rig.position.set(0, 0, 0); rig.rotation.set(0, 0, 0);
+    camera.position.set(0, 0, 0); camera.rotation.set(0, 0, 0);
+    self.mode = 'walk';
+    self.setMode(self.prevMode && self.prevMode !== 'xr' ? self.prevMode : 'walk', walker.level);
+    resize();
+  };
+  function renderCardboard() {
+    var w = container.clientWidth, h = container.clientHeight;
+    if (!w || !h) return;
+    rig.position.set(walker.x, walker.level * P.H + 1.6, walker.z);
+    if (cb.has) {
+      devQuat(camera.quaternion);
+      if (cb.yawOff === null) { var e2 = new T.Euler().setFromQuaternion(camera.quaternion, 'YXZ'); cb.yawOff = walker.yaw - e2.y; }
+      rig.rotation.set(0, cb.yawOff, 0);
+    } else {
+      rig.rotation.set(0, 0, 0);
+      camera.rotation.set(walker.pitch, walker.yaw, 0);
+    }
+    camera.aspect = (w / 2) / h; camera.updateProjectionMatrix();
+    renderer.setScissorTest(true);
+    [[0, -1], [w / 2, 1]].forEach(function (v) {
+      camera.position.set(0, 0, 0); camera.translateX(v[1] * 0.032);
+      renderer.setViewport(v[0], 0, w / 2, h); renderer.setScissor(v[0], 0, w / 2, h);
+      renderer.render(scene, camera);
+    });
+    camera.position.set(0, 0, 0);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, w, h);
+  }
+
+  /* ---- lentes de realidad virtual (WebXR: Meta Quest y similares) ---- */
+  this.xrSupported = function () {
+    if (!navigator.xr || !navigator.xr.isSessionSupported) return Promise.resolve(false);
+    return navigator.xr.isSessionSupported('immersive-vr').catch(function () { return false; });
+  };
+  this.enterXR = function () {
+    if (!P) return Promise.reject(new Error('sin proyecto'));
+    return navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor'] }).then(function (session) {
+      renderer.xr.enabled = true;
+      renderer.xr.setReferenceSpaceType('local-floor');
+      return renderer.xr.setSession(session).then(function () {
+        self.prevMode = self.mode; self.mode = 'xr';
+        levelGroups.forEach(function (g) { g.visible = true; }); if (roofGroup) roofGroup.visible = true;
+        amb.intensity = 0.42; hemi.intensity = 0.7;
+        camera.position.set(0, 0, 0); camera.rotation.set(0, 0, 0);
+        buildTour(); goTour(0);
+        var ctrls = [renderer.xr.getController(0), renderer.xr.getController(1)];
+        var onSel = function () { nextTour(1); };
+        ctrls.forEach(function (c) { c.addEventListener('select', onSel); rig.add(c); });
+        renderer.setAnimationLoop(function () {
+          rig.position.set(walker.x, walker.level * P.H, walker.z);
+          rig.rotation.set(0, walker.yaw, 0);
+          renderer.render(scene, camera);
+        });
+        session.addEventListener('end', function () {
+          renderer.setAnimationLoop(null);
+          ctrls.forEach(function (c) { c.removeEventListener('select', onSel); rig.remove(c); });
+          renderer.xr.enabled = false;
+          rig.position.set(0, 0, 0); rig.rotation.set(0, 0, 0);
+          self.mode = 'walk';
+          self.setMode('walk', walker.level);
+          resize();
+        });
+      });
+    });
+  };
+
+  /* ---- exportar el modelo (GLB) para verlo en el terreno con la cámara ---- */
+  this.exportGLB = function (mode) {
+    return new Promise(function (resolve, reject) {
+      if (!T.GLTFExporter) { reject(new Error('Falta el exportador')); return; }
+      var objs = levelGroups.concat(roofGroup ? [roofGroup] : []);
+      var vis = objs.map(function (o) { return o.visible; });
+      var holder = new T.Group(), base = null;
+      objs.forEach(function (o) { o.visible = true; holder.add(o); });
+      if (mode === 'mesa') {
+        var F = P.inp.frente, D = P.inp.fondo;
+        base = new T.Mesh(new T.BoxGeometry(F, 0.12, D), new T.MeshStandardMaterial({ color: 0x9fb07f, roughness: 1 }));
+        base.position.set(F / 2, -0.08, -P.sf + D / 2);
+        holder.add(base);
+        holder.scale.setScalar(1 / 50);
+      }
+      holder.rotation.y = Math.PI;     // la fachada mira hacia quien sostiene el teléfono
+      var restore = function () {
+        objs.forEach(function (o, i) { world.add(o); o.visible = vis[i]; });
+        if (base) { base.geometry.dispose(); base.material.dispose(); }
+        self.setMode(self.mode === 'cardboard' || self.mode === 'xr' ? 'walk' : self.mode, self.cutLevel);
+      };
+      try {
+        new T.GLTFExporter().parse(holder, function (res) { restore(); resolve(res); }, { binary: true, onlyVisible: true });
+      } catch (err) { restore(); reject(err); }
+    });
+  };
+
   /* ---- bucle ---- */
   var visible = true, last = performance.now();
   if ('IntersectionObserver' in window) new IntersectionObserver(function (en) { visible = en[0].isIntersecting; }).observe(container);
@@ -2372,7 +2322,9 @@ function Viewer3D(container, canvas, hud) {
   function frame(now) {
     requestAnimationFrame(frame);
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
-    if (!visible || !P) return;
+    if (!P || renderer.xr.isPresenting) return;
+    if (self.mode === 'cardboard') { renderCardboard(); return; }
+    if (!visible) return;
     var moving = false;
     if (self.mode === 'walk') {
       var k = walker.keys, sp = 1.7 * dt;
@@ -2722,6 +2674,7 @@ function Viewer3D(container, canvas, hud) {
   function initViewer() {
     viewer = new Viewer3D($('#viewer'), $('#viewer-canvas'), $('#walk-room'));
     if (!viewer.ok) { showViewerError(); return; }
+    viewer.onTour = function (name, i, n) { var el = $('#vr-room'); if (el) el.textContent = name + '  ·  ' + i + '/' + n; };
     $$('.vmode').forEach(function (b) {
       b.addEventListener('click', function () {
         var m = b.dataset.m;
@@ -2744,6 +2697,121 @@ function Viewer3D(container, canvas, hud) {
         else if (el.requestFullscreen) el.requestFullscreen().catch(function () {});
       } catch (e) {}
     });
+  }
+
+
+  /* ============ realidad aumentada: tu casa en tu terreno ============ */
+  function loadScript(src, mod) {
+    return new Promise(function (res, rej) {
+      var sc = document.createElement('script');
+      if (mod) sc.type = 'module';
+      sc.src = src; sc.onload = res; sc.onerror = function () { rej(new Error('No cargó ' + src)); };
+      document.head.appendChild(sc);
+    });
+  }
+  var arCache = { key: null, real: null, mesa: null }, arMode = 'real', mv = null;
+  function ensureExporter() {
+    return (window.THREE && THREE.GLTFExporter) ? Promise.resolve() : loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js');
+  }
+  function ensureModelViewer() {
+    if (window.customElements && customElements.get('model-viewer')) return Promise.resolve();
+    return loadScript('https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js', true).then(function () { return customElements.whenDefined('model-viewer'); });
+  }
+  function buildGLBs() {
+    var key = JSON.stringify(project.inp);
+    if (arCache.key === key && arCache.real) return Promise.resolve();
+    ['real', 'mesa'].forEach(function (m) { if (arCache[m]) URL.revokeObjectURL(arCache[m]); arCache[m] = null; });
+    return viewer.exportGLB('real').then(function (b) {
+      arCache.real = URL.createObjectURL(new Blob([b], { type: 'model/gltf-binary' }));
+      return viewer.exportGLB('mesa');
+    }).then(function (b) {
+      arCache.mesa = URL.createObjectURL(new Blob([b], { type: 'model/gltf-binary' }));
+      arCache.key = key;
+    });
+  }
+  function arStatus(t) { var el = $('#ar-status'); if (el) el.textContent = t; }
+  function setARMode(m) {
+    arMode = m;
+    $$('input[name=armode]').forEach(function (r) { r.checked = r.value === m; });
+    $('#ar-help').textContent = m === 'real'
+      ? 'Párate al centro de tu terreno, apunta el teléfono al piso y toca la pantalla cuando aparezca la marca. La casa aparece a tamaño real.'
+      : 'Apunta el teléfono a una mesa o al piso y toca para colocar la maqueta. Puedes girarla y acercarte.';
+    if (!arCache[m]) return;
+    if (!mv) {
+      mv = document.createElement('model-viewer');
+      ['ar', 'camera-controls', 'auto-rotate'].forEach(function (a) { mv.setAttribute(a, ''); });
+      mv.setAttribute('ar-modes', 'webxr quick-look');
+      mv.setAttribute('ar-placement', 'floor');
+      mv.setAttribute('shadow-intensity', '1');
+      mv.setAttribute('alt', 'Prototipo de tu casa');
+      mv.setAttribute('camera-orbit', '200deg 72deg auto');
+      mv.addEventListener('load', function () {
+        var can = mv.canActivateAR;
+        $('#ar-go').disabled = !can;
+        arStatus(can ? 'Listo. Toca «Abrir la cámara».' : 'Para verla con la cámara abre esta página en tu celular: Chrome en Android o Safari en iPhone.');
+      });
+      mv.addEventListener('ar-status', function (e) { if (e.detail && e.detail.status === 'failed') arStatus('La cámara no pudo iniciar la realidad aumentada en este teléfono.'); });
+      $('#ar-stage').appendChild(mv);
+    }
+    $('#ar-go').disabled = true;
+    arStatus('Cargando modelo…');
+    mv.setAttribute('ar-scale', m === 'real' ? 'fixed' : 'auto');
+    mv.src = arCache[m];
+  }
+  function openAR() {
+    if (!viewer || !viewer.ok) return;
+    track('ra_abrir', {});
+    $('#ar-ov').hidden = false;
+    $('#ar-go').disabled = true;
+    arStatus('Preparando tu casa para verla con la cámara…');
+    Promise.all([ensureExporter(), ensureModelViewer()])
+      .then(buildGLBs)
+      .then(function () { setARMode(arMode); })
+      .catch(function (err) { arStatus('No se pudo preparar el modelo en este navegador.'); if (window.console) console.error(err); });
+  }
+  if ($('#v-ar')) {
+    $('#v-ar').addEventListener('click', openAR);
+    $('#ar-close').addEventListener('click', function () { $('#ar-ov').hidden = true; });
+    $('#ar-ov').addEventListener('click', function (e) { if (e.target.id === 'ar-ov') $('#ar-ov').hidden = true; });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#ar-ov').hidden) $('#ar-ov').hidden = true; });
+    $$('input[name=armode]').forEach(function (r) { r.addEventListener('change', function () { setARMode(r.value); }); });
+    $('#ar-go').addEventListener('click', function () {
+      if (!mv) return;
+      track('ra_camara', { modo: arMode });
+      try { mv.activateAR(); } catch (err) { arStatus('La cámara no pudo iniciar la realidad aumentada en este teléfono.'); }
+    });
+  }
+
+  /* ============ lentes de realidad virtual ============ */
+  function startCardboard() {
+    viewer.enterCardboard();
+    $('#vr-ui').hidden = false;
+    var el = $('#viewer');
+    try { if (el.requestFullscreen) el.requestFullscreen().then(function () { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(function () {}); }).catch(function () {}); } catch (e) {}
+    track('vr_carton', {});
+  }
+  function stopCardboard() {
+    try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
+    viewer.exitCardboard();
+    $('#vr-ui').hidden = true;
+    markMode();
+  }
+  if ($('#v-vr')) {
+    $('#v-vr').addEventListener('click', function () {
+      if (!viewer || !viewer.ok) return;
+      track('vr_abrir', {});
+      // el permiso del giroscopio en iPhone debe pedirse dentro del toque
+      var perm = (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function')
+        ? DeviceOrientationEvent.requestPermission().catch(function () { return 'denied'; }) : Promise.resolve('granted');
+      viewer.xrSupported().then(function (ok) {
+        if (ok) return viewer.enterXR().then(function () { track('vr_lentes', {}); }).catch(function () { return perm.then(startCardboard); });
+        return perm.then(startCardboard);
+      });
+    });
+    $('#vr-exit').addEventListener('click', function (e) { e.stopPropagation(); stopCardboard(); });
+    $('#vr-next').addEventListener('click', function (e) { e.stopPropagation(); viewer.nextTour(1); });
+    $('#vr-prev').addEventListener('click', function (e) { e.stopPropagation(); viewer.nextTour(-1); });
+    document.addEventListener('fullscreenchange', function () { if (!document.fullscreenElement && viewer && viewer.mode === 'cardboard') stopCardboard(); });
   }
 
   /* ---- comparador render / obra ---- */
